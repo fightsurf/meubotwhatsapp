@@ -5,7 +5,8 @@ const app = express();
 app.use(express.json());
 
 const INSTANCE_ID = '3EC3247648EB722CD4655A8D44CAB450';
-const TOKEN = 'B605033F5F640093BC9FD637';
+const TOKEN = 'B605033F5F640093BC9FD637'; // token da instância
+const CLIENT_TOKEN = 'B605033F5F640093BC9FD637'; // client-token da conta
 
 app.post('/webhook', (req, res) => {
   console.log('🔥 WEBHOOK CHAMADO');
@@ -14,7 +15,7 @@ app.post('/webhook', (req, res) => {
   const telefone = req.body.phone;
   const mensagem = req.body.text?.message;
 
-  // RESPONDE O WEBHOOK IMEDIATAMENTE
+  // responde o webhook imediatamente
   res.sendStatus(200);
 
   if (!telefone || !mensagem) {
@@ -32,12 +33,13 @@ app.post('/webhook', (req, res) => {
         },
         {
           headers: {
+            'Client-Token': CLIENT_TOKEN,
             'Content-Type': 'application/json'
           }
         }
       );
 
-      console.log('✅ Mensagem enviada com sucesso (token na URL)');
+      console.log('✅ Mensagem enviada com sucesso');
     } catch (err) {
       console.error(
         '❌ ERRO AO ENVIAR:',
