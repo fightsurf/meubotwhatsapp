@@ -11,7 +11,7 @@ app.post('/webhook', (req, res) => {
   const telefone = req.body.phone;
   const mensagem = req.body.text?.message;
 
-  // RESPONDE O WEBHOOK IMEDIATAMENTE (OBRIGATÓRIO NO Z-API)
+  // RESPONDE O WEBHOOK IMEDIATAMENTE
   res.sendStatus(200);
 
   if (!telefone || !mensagem) {
@@ -19,11 +19,11 @@ app.post('/webhook', (req, res) => {
     return;
   }
 
-  // ENVIO DA MENSAGEM FORA DO CICLO DO WEBHOOK
+  // ENVIO FORA DO CICLO DO WEBHOOK
   setTimeout(async () => {
     try {
       await axios.post(
-        'https://api.z-api.io/instances/3EC3247648EB722CD4655A8D44CAB450/send-text',
+        'https://api.z-api.io/instances/3EC3247648EB722CD4655A8D44CAB450/send-message',
         {
           phone: telefone,
           message: 'Bot Alumínio JR ativo ✅'
@@ -36,14 +36,14 @@ app.post('/webhook', (req, res) => {
         }
       );
 
-      console.log('✅ Mensagem enviada com sucesso');
+      console.log('✅ Mensagem enviada com sucesso (send-message)');
     } catch (err) {
       console.error(
         '❌ ERRO AO ENVIAR:',
         err.response?.data || err.message
       );
     }
-  }, 500);
+  }, 1500); // delay maior pra garantir entrega
 });
 
 const PORT = process.env.PORT || 10000;
