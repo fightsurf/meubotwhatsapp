@@ -8,18 +8,20 @@ app.post('/webhook', (req, res) => {
   console.log('🔥 WEBHOOK CHAMADO');
   console.log(JSON.stringify(req.body, null, 2));
 
-  const telefone = req.body.phone;
+  const telefoneRaw = req.body.phone;
   const mensagem = req.body.text?.message;
 
-  // RESPONDE O WEBHOOK IMEDIATAMENTE
+  // responde o webhook imediatamente
   res.sendStatus(200);
 
-  if (!telefone || !mensagem) {
+  if (!telefoneRaw || !mensagem) {
     console.log('❌ Telefone ou mensagem ausente');
     return;
   }
 
-  // ENVIO FORA DO CICLO DO WEBHOOK
+  // FORMATO CORRETO DO WHATSAPP (OBRIGATÓRIO)
+  const telefone = `${telefoneRaw}@c.us`;
+
   setTimeout(async () => {
     try {
       await axios.post(
@@ -36,14 +38,14 @@ app.post('/webhook', (req, res) => {
         }
       );
 
-      console.log('✅ Mensagem enviada com sucesso (send-message)');
+      console.log('✅ Mensagem enviada com sucesso PARA', telefone);
     } catch (err) {
       console.error(
         '❌ ERRO AO ENVIAR:',
         err.response?.data || err.message
       );
     }
-  }, 1500); // delay maior pra garantir entrega
+  }, 1000);
 });
 
 const PORT = process.env.PORT || 10000;
