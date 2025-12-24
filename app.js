@@ -16,13 +16,18 @@ app.post('/webhook', async (req, res) => {
     }
 
     // RESPOSTA AUTOMÁTICA
-    await axios.post(
-      'https://api.z-api.io/instances/3EC3247648EB722CD4655A8D44CAB450/token/B605033F5F640093BC9FD637/send-text',
-      {
-        phone: telefone,
-        message: 'Bot Alumínio JR ativo ✅'
-      }
-    );
+await axios.post(
+  'https://api.z-api.io/instances/3EC3247648EB722CD4655A8D44CAB450/send-text',
+  {
+    phone: telefone,
+    message: 'Bot Alumínio JR ativo ✅'
+  },
+  {
+    headers: {
+      'Client-Token': 'B605033F5F640093BC9FD637'
+    }
+  }
+);
 
     res.sendStatus(200);
   } catch (err) {
@@ -35,3 +40,4 @@ const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => {
   console.log('Servidor rodando');
 });
+
