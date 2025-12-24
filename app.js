@@ -5,6 +5,9 @@ const app = express();
 app.use(express.json());
 
 app.post('/webhook', async (req, res) => {
+  console.log('🔥 WEBHOOK CHAMADO');
+  console.log(JSON.stringify(req.body, null, 2));
+  
   try {
     const data = req.body;
 
@@ -40,4 +43,5 @@ const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => {
   console.log('Servidor rodando');
 });
+
 
