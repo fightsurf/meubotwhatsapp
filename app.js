@@ -5,8 +5,7 @@ const app = express();
 app.use(express.json());
 
 const INSTANCE_ID = '3EC3247648EB722CD4655A8D44CAB450';
-const TOKEN = 'B605033F5F640093BC9FD637'; // token da instância
-const CLIENT_TOKEN = 'B605033F5F640093BC9FD637'; // client-token da conta
+const TOKEN_INSTANCIA = 'B605033F5F640093BC9FD637';
 
 app.post('/webhook', (req, res) => {
   console.log('🔥 WEBHOOK CHAMADO');
@@ -15,7 +14,7 @@ app.post('/webhook', (req, res) => {
   const telefone = req.body.phone;
   const mensagem = req.body.text?.message;
 
-  // responde o webhook imediatamente
+  // responde imediatamente
   res.sendStatus(200);
 
   if (!telefone || !mensagem) {
@@ -26,14 +25,13 @@ app.post('/webhook', (req, res) => {
   setTimeout(async () => {
     try {
       await axios.post(
-        `https://api.z-api.io/instances/${INSTANCE_ID}/token/${TOKEN}/send-text`,
+        `https://api.z-api.io/instances/${INSTANCE_ID}/token/${TOKEN_INSTANCIA}/send-text`,
         {
           phone: telefone,
           message: 'Bot Alumínio JR ativo ✅'
         },
         {
           headers: {
-            'Client-Token': CLIENT_TOKEN,
             'Content-Type': 'application/json'
           }
         }
