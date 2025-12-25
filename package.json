@@ -1,9 +1,12 @@
 {
-  "name": "bot-whatsapp-aluminiojr",
+  "name": "bot-aluminio-jr",
   "version": "1.0.0",
-  "main": "server.js",
+  "main": "src/app.js",
+  "scripts": {
+    "start": "node src/app.js"
+  },
   "dependencies": {
-    "express": "^4.18.2",
-    "axios": "^1.6.0"
+    "axios": "^1.6.0",
+    "express": "^4.18.2"
   }
 }
