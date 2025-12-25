@@ -6,10 +6,10 @@ const config = require('./config');
 const app = express();
 app.use(express.json());
 
-console.log('🚀 Bot Alumínio JR iniciado (produção silenciosa)');
+console.log('🚀 Bot Alumínio JR iniciado (produção restrita)');
 
-// ===== CONTROLE GLOBAL =====
-let IA_ATIVA = false;
+// ===== CONTROLE =====
+const NUMERO_AUTORIZADO = '558398099164'; // SEU WHATSAPP
 
 // ===== FUNÇÃO DE ENVIO =====
 async function enviarMensagem(phone, message) {
@@ -37,64 +37,44 @@ app.post('/webhook', async (req, res) => {
 
   if (!phone || !texto) return;
 
-  const msg = texto.trim();
-
-  // 🔐 SENHA DE ATIVAÇÃO (APENAS VOCÊ)
-  if (msg === '123mudar') {
-    IA_ATIVA = true;
-    await enviarMensagem(
-      phone,
-      '✅ Modo IA ativado.\n\nDigite:\n1 - Kits\n2 - Preços\nOu escreva normalmente para testar a IA.'
-    );
-    console.log('🔓 IA ATIVADA');
+  // 🔒 BLOQUEIA QUALQUER OUTRO NÚMERO
+  if (phone !== NUMERO_AUTORIZADO) {
+    console.log('⛔ Mensagem ignorada de:', phone);
     return;
   }
 
-  // 🔒 PRODUÇÃO: não responde nada antes da senha
-  if (!IA_ATIVA) {
-    console.log('⛔ Mensagem ignorada (IA desligada)');
-    return;
-  }
+  const msg = texto.trim().toLowerCase();
 
-  const textoLower = msg.toLowerCase();
-
-  // ===== MENU =====
-  if (textoLower === 'oi' || textoLower === 'ola' || textoLower === 'olá') {
+  // ===== MENU (SÓ VOCÊ VÊ) =====
+  if (msg === 'oi' || msg === 'ola' || msg === 'olá') {
     return enviarMensagem(
       phone,
-      '👋 Atendimento Alumínio JR\n\n' +
+      '🧪 Modo teste Alumínio JR\n\n' +
       '1️⃣ Kits\n' +
       '2️⃣ Preços\n' +
-      '3️⃣ Falar com humano'
+      'Escreva qualquer coisa para testar a IA.'
     );
   }
 
-  if (textoLower === '1' || textoLower.includes('kit')) {
+  if (msg === '1' || msg.includes('kit')) {
     return enviarMensagem(
       phone,
-      '📦 Trabalhamos com kits econômicos e completos.\n\nInforme o valor médio por item que você procura.'
+      '📦 Teste de kits ativo. Diga o preço médio desejado.'
     );
   }
 
-  if (textoLower === '2' || textoLower.includes('preço') || textoLower.includes('preco')) {
+  if (msg === '2' || msg.includes('preço') || msg.includes('preco')) {
     return enviarMensagem(
       phone,
-      '💰 Qual produto você quer consultar ou prefere montar um kit?'
+      '💰 Teste de preços ativo. Qual produto deseja consultar?'
     );
   }
 
-  if (textoLower === '3' || textoLower.includes('humano')) {
-    return enviarMensagem(
-      phone,
-      '👤 Certo. Um atendente humano assumirá a conversa.'
-    );
-  }
-
-  // ===== IA =====
+  // ===== IA (SÓ VOCÊ) =====
   try {
-    const respostaIA = await chamarIA(msg);
+    const respostaIA = await chamarIA(texto);
     await enviarMensagem(phone, respostaIA);
-    console.log('🤖 IA respondeu');
+    console.log('🤖 IA respondeu para número autorizado');
   } catch (err) {
     console.error('❌ ERRO IA:', err.message);
   }
