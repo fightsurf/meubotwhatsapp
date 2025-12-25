@@ -1,6 +1,8 @@
 const axios = require('axios');
-const PROMPT_BASE = require('./prompt');
-const { OPENAI_API_KEY } = require('./config');
+const path = require('path');
+
+const PROMPT_BASE = require(path.join(__dirname, 'prompt.js'));
+const { OPENAI_API_KEY } = require(path.join(__dirname, 'config.js'));
 
 async function chamarIA(texto) {
   if (!OPENAI_API_KEY) {
