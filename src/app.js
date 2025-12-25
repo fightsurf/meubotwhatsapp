@@ -7,17 +7,16 @@ const { responderComIA } = require(path.join(__dirname, 'ia.js'));
 const app = express();
 app.use(express.json());
 
-console.log('🚀 Bot Alumínio JR iniciado (produção restrita)');
+console.log('🚀 Bot Alumínio JR iniciado');
 
-// ===== CONFIG Z-API =====
+// ===== Z-API =====
 const INSTANCE_ID = process.env.INSTANCE_ID;
 const TOKEN_INSTANCIA = process.env.TOKEN_INSTANCIA;
 const CLIENT_TOKEN = process.env.CLIENT_TOKEN;
 
-// seu número autorizado
+// número autorizado (somente você)
 const NUMERO_AUTORIZADO = '558398099164';
 
-// ===== ENVIO DE MENSAGEM =====
 async function enviarMensagem(phone, message) {
   return axios.post(
     `https://api.z-api.io/instances/${INSTANCE_ID}/token/${TOKEN_INSTANCIA}/send-text`,
@@ -31,7 +30,6 @@ async function enviarMensagem(phone, message) {
   );
 }
 
-// ===== WEBHOOK =====
 app.post('/webhook', async (req, res) => {
   res.sendStatus(200);
 
@@ -49,7 +47,6 @@ app.post('/webhook', async (req, res) => {
   }
 });
 
-// ===== SERVER =====
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => {
   console.log(`🟢 Servidor rodando na porta ${PORT}`);
