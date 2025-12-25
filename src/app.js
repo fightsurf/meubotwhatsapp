@@ -6,7 +6,7 @@ const config = require('./config');
 const app = express();
 app.use(express.json());
 
-console.log('🚀 Bot Alumínio JR iniciado (modo produção seguro)');
+console.log('🚀 Bot Alumínio JR iniciado (produção silenciosa)');
 
 // ===== CONTROLE GLOBAL =====
 let IA_ATIVA = false;
@@ -46,7 +46,7 @@ app.post('/webhook', async (req, res) => {
       phone,
       '✅ Modo IA ativado.\n\nDigite:\n1 - Kits\n2 - Preços\nOu escreva normalmente para testar a IA.'
     );
-    console.log('🔓 IA ATIVADA MANUALMENTE');
+    console.log('🔓 IA ATIVADA');
     return;
   }
 
@@ -72,14 +72,14 @@ app.post('/webhook', async (req, res) => {
   if (textoLower === '1' || textoLower.includes('kit')) {
     return enviarMensagem(
       phone,
-      '📦 Trabalhamos com kits econômicos e completos.\n\nDiga o valor médio por item que você procura.'
+      '📦 Trabalhamos com kits econômicos e completos.\n\nInforme o valor médio por item que você procura.'
     );
   }
 
   if (textoLower === '2' || textoLower.includes('preço') || textoLower.includes('preco')) {
     return enviarMensagem(
       phone,
-      '💰 Pode me dizer qual produto você quer consultar ou se prefere montar um kit?'
+      '💰 Qual produto você quer consultar ou prefere montar um kit?'
     );
   }
 
@@ -94,7 +94,7 @@ app.post('/webhook', async (req, res) => {
   try {
     const respostaIA = await chamarIA(msg);
     await enviarMensagem(phone, respostaIA);
-    console.log('🤖 IA respondeu com sucesso');
+    console.log('🤖 IA respondeu');
   } catch (err) {
     console.error('❌ ERRO IA:', err.message);
   }
