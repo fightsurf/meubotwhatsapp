@@ -3,6 +3,10 @@ const PROMPT_BASE = require('./prompt');
 const { OPENAI_API_KEY } = require('./config');
 
 async function chamarIA(texto) {
+  if (!OPENAI_API_KEY) {
+    throw new Error('OPENAI_API_KEY não configurada');
+  }
+
   const resp = await axios.post(
     'https://api.openai.com/v1/chat/completions',
     {
