@@ -21,23 +21,14 @@ async function responderComIA(texto) {
       }
     );
 
-    // ✅ EXTRAÇÃO CORRETA E ROBUSTA
     const output =
       response.data.output_text ||
       response.data.output?.[0]?.content?.[0]?.text;
 
-    if (!output) {
-      console.error('❌ IA respondeu sem texto:', response.data);
-      return 'Não consegui gerar resposta agora.';
-    }
-
-    return output;
+    return output || 'Não consegui gerar resposta agora.';
 
   } catch (err) {
-    console.error(
-      '❌ ERRO REAL DA IA:',
-      err.response?.data || err.message
-    );
+    console.error('❌ ERRO REAL IA:', err.response?.data || err.message);
     return 'Erro interno no atendimento automático.';
   }
 }
