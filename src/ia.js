@@ -6,11 +6,19 @@ const PROMPT_BASE = require(path.join(__dirname, 'prompt.js'));
 async function responderComIA(texto) {
   try {
     const response = await axios.post(
-      'https://api.openai.com/v1/responses',
+      'https://api.openai.com/v1/chat/completions',
       {
-        model: 'gpt-4.1-mini',
-        instructions: PROMPT_BASE,
-        input: texto,
+        model: 'gpt-4o-mini',
+        messages: [
+          {
+            role: 'system',
+            content: PROMPT_BASE
+          },
+          {
+            role: 'user',
+            content: texto
+          }
+        ],
         temperature: 0.4
       },
       {
@@ -21,14 +29,20 @@ async function responderComIA(texto) {
       }
     );
 
-    const output =
-      response.data.output_text ||
-      response.data.output?.[0]?.content?.[0]?.text;
+    const resposta = response.data.choices?.[0]?.message?.content;
 
-    return output || 'Não consegui gerar resposta agora.';
+    if (!resposta) {
+      console.error('IA respondeu sem texto:', response.data);
+      return 'Não consegui gerar resposta agora.';
+    }
+
+    return resposta;
 
   } catch (err) {
-    console.error('❌ ERRO REAL IA:', err.response?.data || err.message);
+    console.error(
+      '❌ ERRO REAL IA:',
+      err.response?.data || err.message
+    );
     return 'Erro interno no atendimento automático.';
   }
 }
