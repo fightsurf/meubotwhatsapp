@@ -1,7 +1,7 @@
 const axios = require('axios');
 const path = require('path');
 
-const config = require(path.join(__dirname, 'config.js'));
+const PROMPT_BASE = require(path.join(__dirname, 'prompt.js'));
 
 async function responderComIA(texto) {
   const response = await axios.post(
@@ -11,7 +11,7 @@ async function responderComIA(texto) {
       messages: [
         {
           role: 'system',
-          content: config.PROMPT_BASE
+          content: PROMPT_BASE
         },
         {
           role: 'user',
