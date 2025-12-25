@@ -1,7 +1,9 @@
 const express = require('express');
 const axios = require('axios');
-const chamarIA = require('./ia');
-const config = require('./config');
+const path = require('path');
+
+const chamarIA = require(path.join(__dirname, 'ia.js'));
+const config = require(path.join(__dirname, 'config.js'));
 
 const app = express();
 app.use(express.json());
@@ -9,16 +11,13 @@ app.use(express.json());
 console.log('🚀 Bot Alumínio JR iniciado (produção restrita)');
 
 // ===== CONTROLE =====
-const NUMERO_AUTORIZADO = '558398099164'; // SEU WHATSAPP
+const NUMERO_AUTORIZADO = '558398099164'; // seu WhatsApp
 
-// ===== FUNÇÃO DE ENVIO =====
+// ===== ENVIO =====
 async function enviarMensagem(phone, message) {
   return axios.post(
     `https://api.z-api.io/instances/${config.INSTANCE_ID}/token/${config.TOKEN_INSTANCIA}/send-text`,
-    {
-      phone,
-      message
-    },
+    { phone, message },
     {
       headers: {
         'Client-Token': config.CLIENT_TOKEN,
@@ -37,44 +36,15 @@ app.post('/webhook', async (req, res) => {
 
   if (!phone || !texto) return;
 
-  // 🔒 BLOQUEIA QUALQUER OUTRO NÚMERO
   if (phone !== NUMERO_AUTORIZADO) {
-    console.log('⛔ Mensagem ignorada de:', phone);
+    console.log('⛔ Ignorado:', phone);
     return;
   }
 
-  const msg = texto.trim().toLowerCase();
-
-  // ===== MENU (SÓ VOCÊ VÊ) =====
-  if (msg === 'oi' || msg === 'ola' || msg === 'olá') {
-    return enviarMensagem(
-      phone,
-      '🧪 Modo teste Alumínio JR\n\n' +
-      '1️⃣ Kits\n' +
-      '2️⃣ Preços\n' +
-      'Escreva qualquer coisa para testar a IA.'
-    );
-  }
-
-  if (msg === '1' || msg.includes('kit')) {
-    return enviarMensagem(
-      phone,
-      '📦 Teste de kits ativo. Diga o preço médio desejado.'
-    );
-  }
-
-  if (msg === '2' || msg.includes('preço') || msg.includes('preco')) {
-    return enviarMensagem(
-      phone,
-      '💰 Teste de preços ativo. Qual produto deseja consultar?'
-    );
-  }
-
-  // ===== IA (SÓ VOCÊ) =====
   try {
-    const respostaIA = await chamarIA(texto);
-    await enviarMensagem(phone, respostaIA);
-    console.log('🤖 IA respondeu para número autorizado');
+    const resposta = await chamarIA(texto);
+    await enviarMensagem(phone, resposta);
+    console.log('🤖 IA respondeu');
   } catch (err) {
     console.error('❌ ERRO IA:', err.message);
   }
