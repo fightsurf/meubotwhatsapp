@@ -2,25 +2,29 @@ const express = require('express');
 const axios = require('axios');
 const path = require('path');
 
-const chamarIA = require(path.join(__dirname, 'ia.js'));
-const config = require(path.join(__dirname, 'config.js'));
+const { responderComIA } = require(path.join(__dirname, 'ia.js'));
 
 const app = express();
 app.use(express.json());
 
 console.log('🚀 Bot Alumínio JR iniciado (produção restrita)');
 
-// ===== CONTROLE =====
-const NUMERO_AUTORIZADO = '558398099164'; // seu WhatsApp
+// ===== CONFIG Z-API =====
+const INSTANCE_ID = process.env.INSTANCE_ID;
+const TOKEN_INSTANCIA = process.env.TOKEN_INSTANCIA;
+const CLIENT_TOKEN = process.env.CLIENT_TOKEN;
 
-// ===== ENVIO =====
+// seu número autorizado
+const NUMERO_AUTORIZADO = '558398099164';
+
+// ===== ENVIO DE MENSAGEM =====
 async function enviarMensagem(phone, message) {
   return axios.post(
-    `https://api.z-api.io/instances/${config.INSTANCE_ID}/token/${config.TOKEN_INSTANCIA}/send-text`,
+    `https://api.z-api.io/instances/${INSTANCE_ID}/token/${TOKEN_INSTANCIA}/send-text`,
     { phone, message },
     {
       headers: {
-        'Client-Token': config.CLIENT_TOKEN,
+        'Client-Token': CLIENT_TOKEN,
         'Content-Type': 'application/json'
       }
     }
@@ -35,16 +39,11 @@ app.post('/webhook', async (req, res) => {
   const texto = req.body.text?.message;
 
   if (!phone || !texto) return;
-
-  if (phone !== NUMERO_AUTORIZADO) {
-    console.log('⛔ Ignorado:', phone);
-    return;
-  }
+  if (phone !== NUMERO_AUTORIZADO) return;
 
   try {
-    const resposta = await chamarIA(texto);
+    const resposta = await responderComIA(texto);
     await enviarMensagem(phone, resposta);
-    console.log('🤖 IA respondeu');
   } catch (err) {
     console.error('❌ ERRO IA:', err.message);
   }
