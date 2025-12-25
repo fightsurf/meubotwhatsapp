@@ -9,16 +9,8 @@ async function responderComIA(texto) {
       'https://api.openai.com/v1/responses',
       {
         model: 'gpt-4.1-mini',
-        input: [
-          {
-            role: 'system',
-            content: PROMPT_BASE
-          },
-          {
-            role: 'user',
-            content: texto
-          }
-        ],
+        instructions: PROMPT_BASE,
+        input: texto,
         temperature: 0.4
       },
       {
@@ -29,17 +21,14 @@ async function responderComIA(texto) {
       }
     );
 
-    // forma segura de extrair texto
-    const output =
-      response.data.output_text ||
-      response.data.output?.[0]?.content?.[0]?.text;
+    const resposta = response.data.output_text;
 
-    if (!output) {
-      console.error('❌ Resposta da IA vazia:', response.data);
-      return 'Tive um problema ao gerar a resposta. Pode repetir?';
+    if (!resposta) {
+      console.error('Resposta vazia da IA:', response.data);
+      return 'Não consegui gerar resposta agora.';
     }
 
-    return output;
+    return resposta;
 
   } catch (err) {
     console.error(
