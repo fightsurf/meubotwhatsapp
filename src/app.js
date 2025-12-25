@@ -12,11 +12,12 @@ console.log('🚀 Bot Alumínio JR iniciado');
 // ===== Z-API =====
 const INSTANCE_ID = process.env.INSTANCE_ID;
 const TOKEN_INSTANCIA = process.env.TOKEN_INSTANCIA;
+const CLIENT_TOKEN = process.env.CLIENT_TOKEN;
 
 // número autorizado (somente você)
 const NUMERO_AUTORIZADO = '558398099164';
 
-// envia mensagem pelo Z-API (SEM Client-Token)
+// envia mensagem pelo Z-API (COM Client-Token)
 async function enviarMensagem(phone, message) {
   return axios.post(
     `https://api.z-api.io/instances/${INSTANCE_ID}/token/${TOKEN_INSTANCIA}/send-text`,
@@ -26,6 +27,7 @@ async function enviarMensagem(phone, message) {
     },
     {
       headers: {
+        'Client-Token': CLIENT_TOKEN,
         'Content-Type': 'application/json'
       }
     }
