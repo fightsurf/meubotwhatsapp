@@ -1,0 +1,5 @@
+const PROMPT_BASE = `
+COLE AQUI SEU PROMPT COMPLETO
+`;
+
+module.exports = PROMPT_BASE;
