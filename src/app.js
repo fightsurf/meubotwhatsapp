@@ -22,6 +22,9 @@ const NUMERO_AUTORIZADO = '5583998099164';
 const LINK_CATALOGO = 'https://catalogo-aluminio-jr.onrender.com';
 const LINK_KITS = 'https://catalogo-aluminio-jr.onrender.com/kits-feirinha';
 
+// ===== CONTROLE DE PRIMEIRO CONTATO =====
+const primeirosContatos = new Set();
+
 // ===== ENVIO WHATSAPP =====
 async function enviarMensagem(phone, message) {
   return axios.post(
@@ -36,7 +39,7 @@ async function enviarMensagem(phone, message) {
   );
 }
 
-// ===== PRIMEIRO CONTATO =====
+// ===== PRIMEIRA MENSAGEM =====
 function mensagemInicial() {
   return (
     `ALUMÍNIO JR\n\n` +
@@ -54,13 +57,27 @@ app.post('/webhook', async (req, res) => {
   res.sendStatus(200);
 
   const phone = req.body.phone;
-  const texto = req.body.text?.message;
+  const texto = req.body.text?.message?.trim();
 
   if (!phone || !texto) return;
 
+  // ===== RESET DE TESTES (APENAS VOCÊ) =====
+  if (phone === NUMERO_AUTORIZADO && texto === '123reset') {
+    primeirosContatos.clear();
+    await enviarMensagem(phone, '✅ Tabela de primeiro contato zerada.');
+    console.log('♻️ Primeiro contato resetado manualmente');
+    return;
+  }
+
+  // ===== PRIMEIRO CONTATO =====
+  if (!primeirosContatos.has(phone)) {
+    primeirosContatos.add(phone);
+    await enviarMensagem(phone, mensagemInicial());
+    return;
+  }
+
   // 🔒 BLOQUEIO TOTAL DE IA PARA OUTROS NÚMEROS
   if (phone !== NUMERO_AUTORIZADO) {
-    await enviarMensagem(phone, mensagemInicial());
     return;
   }
 
