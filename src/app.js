@@ -117,61 +117,39 @@ app.post('/webhook', async (req, res) => {
   }
 
   // ===== PEDIDO DE CATÁLOGO =====
-  if (
-    texto.includes('catálogo') ||
-    texto.includes('catalogo')
-  ) {
+  if (texto.includes('catálogo') || texto.includes('catalogo')) {
     await enviarMensagem(phone, mensagemCatalogoDireta());
     return;
   }
 
-  // ===== PEDIDO DE PREÇO =====
-  if (
-    texto.includes('preço') ||
-    texto.includes('precos') ||
-    texto.includes('valor') ||
-    texto.includes('quanto custa')
-  ) {
-    try {
-      const { data: produtos } = await axios.get(API_PRODUTOS);
+  // ===== BUSCA DIRETA POR PRODUTO (COM FOTO E PREÇO) =====
+  try {
+    const { data: produtos } = await axios.get(API_PRODUTOS);
 
-      const termo = texto
-        .replace('preço', '')
-        .replace('valor', '')
-        .replace('quanto custa', '')
-        .trim();
+    const encontrados = produtos.filter(p =>
+      texto.includes(p.nome.toLowerCase())
+    );
 
-      const encontrados = produtos.filter(p =>
-        p.nome.toLowerCase().includes(termo)
-      );
-
-      if (encontrados.length === 0) {
-        await enviarMensagem(
-          phone,
-          'Não encontrei esse item no catálogo. Pode especificar melhor?'
-        );
-        return;
-      }
-
+    if (encontrados.length > 0) {
       for (const p of encontrados) {
-        const textoProduto = `${p.nome} — R$ ${p.preco.toFixed(2).replace('.', ',')}`;
-        await enviarMensagem(phone, textoProduto);
+        const textoProduto =
+          `${p.nome}\n` +
+          `R$ ${Number(p.preco).toFixed(2).replace('.', ',')}`;
 
         if (p.foto) {
           await enviarImagem(phone, p.foto, textoProduto);
+        } else {
+          await enviarMensagem(phone, textoProduto);
         }
       }
-
-      return;
-
-    } catch (err) {
-      console.error('❌ ERRO CATÁLOGO:', err.message);
-      await enviarMensagem(phone, 'Erro ao consultar o catálogo.');
       return;
     }
+
+  } catch (err) {
+    console.error('❌ ERRO CATÁLOGO:', err.message);
   }
 
-  // ===== IA =====
+  // ===== IA (SÓ SE NÃO FOR PRODUTO) =====
   try {
     const resposta = await responderComIA(textoOriginal);
     await enviarMensagem(phone, resposta);
