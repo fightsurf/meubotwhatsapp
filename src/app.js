@@ -118,7 +118,7 @@ app.post('/webhook', async (req, res) => {
     return;
   }
 
-  // ===== BUSCA DE PRODUTO (NOME → IMAGEM → PREÇO) =====
+  // ===== BUSCA DE PRODUTO (NOME + PREÇO → FOTO) =====
   try {
     const { data: produtos } = await axios.get(API_PRODUTOS);
 
@@ -131,19 +131,19 @@ app.post('/webhook', async (req, res) => {
 
     if (encontrados.length > 0) {
       for (const p of encontrados) {
-        const nome = p.nome;
-        const preco = `R$ ${Number(p.preco).toFixed(2).replace('.', ',')}`;
+        const precoFormatado =
+          `R$ ${Number(p.preco).toFixed(2).replace('.', ',')}`;
 
-        // 1️⃣ Nome
-        await enviarMensagem(phone, nome);
+        const linhaTexto =
+          `${p.nome}: *${precoFormatado}* 👇`;
 
-        // 2️⃣ Foto
+        // Texto (nome + preço)
+        await enviarMensagem(phone, linhaTexto);
+
+        // Foto
         if (p.foto) {
           await enviarImagem(phone, p.foto);
         }
-
-        // 3️⃣ Preço
-        await enviarMensagem(phone, preco);
       }
       return;
     }
