@@ -47,7 +47,7 @@ async function enviarMensagem(phone, message) {
   );
 }
 
-// ===== ENVIO IMAGEM (SEM LEGENDA) =====
+// ===== ENVIO IMAGEM =====
 async function enviarImagem(phone, imageUrl) {
   return axios.post(
     `https://api.z-api.io/instances/${INSTANCE_ID}/token/${TOKEN_INSTANCIA}/send-image`,
@@ -118,11 +118,12 @@ app.post('/webhook', async (req, res) => {
     return;
   }
 
-  // ===== BUSCA DE PRODUTO (NOME + PREÇO → FOTO) =====
+  // ===== BUSCA DE PRODUTO (LIMITADO A 3) =====
   try {
     const { data: produtos } = await axios.get(API_PRODUTOS);
 
     const palavras = texto.split(' ').filter(p => p.length > 2);
+    const termoBusca = palavras[0] || 'produto';
 
     const encontrados = produtos.filter(p => {
       const nome = p.nome.toLowerCase();
@@ -130,17 +131,23 @@ app.post('/webhook', async (req, res) => {
     });
 
     if (encontrados.length > 0) {
-      for (const p of encontrados) {
+      const limitados = encontrados.slice(0, 3);
+
+      // 👉 FRASE INTRODUTÓRIA
+      await enviarMensagem(
+        phone,
+        `Encontrei ${limitados.length} itens com o nome "${termoBusca}":`
+      );
+
+      for (const p of limitados) {
         const precoFormatado =
           `R$ ${Number(p.preco).toFixed(2).replace('.', ',')}`;
 
         const linhaTexto =
           `${p.nome}: *${precoFormatado}* 👇`;
 
-        // Texto (nome + preço)
         await enviarMensagem(phone, linhaTexto);
 
-        // Foto
         if (p.foto) {
           await enviarImagem(phone, p.foto);
         }
