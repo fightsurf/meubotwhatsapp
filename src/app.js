@@ -14,7 +14,7 @@ const INSTANCE_ID = process.env.INSTANCE_ID;
 const TOKEN_INSTANCIA = process.env.TOKEN_INSTANCIA;
 const CLIENT_TOKEN = process.env.CLIENT_TOKEN;
 
-// 🔒 SEU NÚMERO (EXATO COMO CHEGA DO Z-API)
+// 🔒 SEU NÚMERO
 const NUMERO_AUTORIZADO = '558398099164';
 
 // ===== LINKS =====
@@ -47,14 +47,13 @@ async function enviarMensagem(phone, message) {
   );
 }
 
-// ===== ENVIO IMAGEM =====
-async function enviarImagem(phone, imageUrl, caption) {
+// ===== ENVIO IMAGEM (SEM LEGENDA) =====
+async function enviarImagem(phone, imageUrl) {
   return axios.post(
     `https://api.z-api.io/instances/${INSTANCE_ID}/token/${TOKEN_INSTANCIA}/send-image`,
     {
       phone,
-      image: imageUrl,
-      caption
+      image: imageUrl
     },
     {
       headers: {
@@ -119,13 +118,11 @@ app.post('/webhook', async (req, res) => {
     return;
   }
 
-  // ===== BUSCA INTELIGENTE DE PRODUTOS =====
+  // ===== BUSCA DE PRODUTO (NOME → IMAGEM → PREÇO) =====
   try {
     const { data: produtos } = await axios.get(API_PRODUTOS);
 
-    const palavras = texto
-      .split(' ')
-      .filter(p => p.length > 2); // ignora "de", "com", etc.
+    const palavras = texto.split(' ').filter(p => p.length > 2);
 
     const encontrados = produtos.filter(p => {
       const nome = p.nome.toLowerCase();
@@ -134,15 +131,19 @@ app.post('/webhook', async (req, res) => {
 
     if (encontrados.length > 0) {
       for (const p of encontrados) {
-        const legenda =
-          `${p.nome}\n` +
-          `R$ ${Number(p.preco).toFixed(2).replace('.', ',')}`;
+        const nome = p.nome;
+        const preco = `R$ ${Number(p.preco).toFixed(2).replace('.', ',')}`;
 
+        // 1️⃣ Nome
+        await enviarMensagem(phone, nome);
+
+        // 2️⃣ Foto
         if (p.foto) {
-          await enviarImagem(phone, p.foto, legenda);
-        } else {
-          await enviarMensagem(phone, legenda);
+          await enviarImagem(phone, p.foto);
         }
+
+        // 3️⃣ Preço
+        await enviarMensagem(phone, preco);
       }
       return;
     }
@@ -151,7 +152,7 @@ app.post('/webhook', async (req, res) => {
     console.error('❌ ERRO CATÁLOGO:', err.message);
   }
 
-  // ===== IA (SÓ SE NÃO FOR PRODUTO) =====
+  // ===== IA =====
   try {
     const resposta = await responderComIA(textoOriginal);
     await enviarMensagem(phone, resposta);
@@ -165,4 +166,3 @@ const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => {
   console.log(`🟢 Servidor rodando na porta ${PORT}`);
 });
-
