@@ -14,18 +14,23 @@ const INSTANCE_ID = process.env.INSTANCE_ID;
 const TOKEN_INSTANCIA = process.env.TOKEN_INSTANCIA;
 const CLIENT_TOKEN = process.env.CLIENT_TOKEN;
 
-// 🔒 ÚNICO NÚMERO AUTORIZADO
-// Formato: 55 + DDD + número
+// 🔒 SEU NÚMERO (SOMENTE DÍGITOS)
 const NUMERO_AUTORIZADO = '5583998099164';
 
 // ===== LINKS =====
 const LINK_CATALOGO = 'https://catalogo-aluminio-jr.onrender.com';
 const LINK_KITS = 'https://catalogo-aluminio-jr.onrender.com/kits-feirinha';
 
-// ===== CONTROLE DE PRIMEIRO CONTATO (APENAS SEU NÚMERO) =====
-const primeiroContato = {
-  '5583998099164': false
-};
+// ===== CONTROLE DE PRIMEIRO CONTATO (APENAS VOCÊ) =====
+let primeiroContato = false;
+
+// ===== FUNÇÃO PARA NORMALIZAR TELEFONE =====
+function normalizarTelefone(phone) {
+  return phone
+    .replace('@c.us', '')
+    .replace('@lid', '')
+    .replace(/\D/g, '');
+}
 
 // ===== ENVIO WHATSAPP =====
 async function enviarMensagem(phone, message) {
@@ -58,32 +63,35 @@ function mensagemInicial() {
 app.post('/webhook', async (req, res) => {
   res.sendStatus(200);
 
-  const phone = req.body.phone;
-  const texto = req.body.text?.message?.trim();
+  if (!req.body.phone || !req.body.text?.message) return;
 
-  if (!phone || !texto) return;
+  const phoneRaw = req.body.phone;
+  const phone = normalizarTelefone(phoneRaw);
+  const texto = req.body.text.message.trim();
 
-  // 🔒 REGRA MÁXIMA: SÓ RESPONDE AO SEU NÚMERO
+  console.log('📞 Phone recebido:', phoneRaw, '→ normalizado:', phone);
+
+  // 🔒 REGRA MÁXIMA: SÓ VOCÊ
   if (phone !== NUMERO_AUTORIZADO) {
     return;
   }
 
   // ===== RESET MANUAL =====
   if (texto === '123reset') {
-    primeiroContato[NUMERO_AUTORIZADO] = false;
+    primeiroContato = false;
     await enviarMensagem(phone, '✅ Primeiro contato resetado.');
     console.log('♻️ Reset manual executado');
     return;
   }
 
-  // ===== PRIMEIRO CONTATO (UMA ÚNICA VEZ) =====
-  if (!primeiroContato[NUMERO_AUTORIZADO]) {
-    primeiroContato[NUMERO_AUTORIZADO] = true;
+  // ===== PRIMEIRO CONTATO (UMA VEZ) =====
+  if (!primeiroContato) {
+    primeiroContato = true;
     await enviarMensagem(phone, mensagemInicial());
     return;
   }
 
-  // ===== IA (SÓ DEPOIS DO PRIMEIRO CONTATO) =====
+  // ===== IA =====
   try {
     console.log('📩 Mensagem recebida:', texto);
 
