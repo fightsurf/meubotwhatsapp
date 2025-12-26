@@ -15,7 +15,8 @@ const TOKEN_INSTANCIA = process.env.TOKEN_INSTANCIA;
 const CLIENT_TOKEN = process.env.CLIENT_TOKEN;
 
 // 🔒 NÚMERO AUTORIZADO (SOMENTE VOCÊ)
-const NUMERO_AUTORIZADO = '558398099164';
+// Formato: 55 + DDD + número
+const NUMERO_AUTORIZADO = '5583998099164';
 
 // ===== LINKS =====
 const LINK_CATALOGO = 'https://catalogo-aluminio-jr.onrender.com';
