@@ -80,10 +80,7 @@ function mensagemInicial() {
 
 // ===== CATÁLOGO DIRETO =====
 function mensagemCatalogoDireta() {
-  return (
-    `Catálogo completo Alumínio JR\n` +
-    `👉 ${LINK_CATALOGO}`
-  );
+  return `Catálogo completo Alumínio JR\n👉 ${LINK_CATALOGO}`;
 }
 
 // ===== WEBHOOK =====
@@ -122,24 +119,29 @@ app.post('/webhook', async (req, res) => {
     return;
   }
 
-  // ===== BUSCA DIRETA POR PRODUTO (COM FOTO E PREÇO) =====
+  // ===== BUSCA INTELIGENTE DE PRODUTOS =====
   try {
     const { data: produtos } = await axios.get(API_PRODUTOS);
 
-    const encontrados = produtos.filter(p =>
-      texto.includes(p.nome.toLowerCase())
-    );
+    const palavras = texto
+      .split(' ')
+      .filter(p => p.length > 2); // ignora "de", "com", etc.
+
+    const encontrados = produtos.filter(p => {
+      const nome = p.nome.toLowerCase();
+      return palavras.some(palavra => nome.includes(palavra));
+    });
 
     if (encontrados.length > 0) {
       for (const p of encontrados) {
-        const textoProduto =
+        const legenda =
           `${p.nome}\n` +
           `R$ ${Number(p.preco).toFixed(2).replace('.', ',')}`;
 
         if (p.foto) {
-          await enviarImagem(phone, p.foto, textoProduto);
+          await enviarImagem(phone, p.foto, legenda);
         } else {
-          await enviarMensagem(phone, textoProduto);
+          await enviarMensagem(phone, legenda);
         }
       }
       return;
