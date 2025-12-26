@@ -14,7 +14,7 @@ const INSTANCE_ID = process.env.INSTANCE_ID;
 const TOKEN_INSTANCIA = process.env.TOKEN_INSTANCIA;
 const CLIENT_TOKEN = process.env.CLIENT_TOKEN;
 
-// 🔒 NÚMERO AUTORIZADO (SOMENTE VOCÊ)
+// 🔒 ÚNICO NÚMERO AUTORIZADO
 // Formato: 55 + DDD + número
 const NUMERO_AUTORIZADO = '5583998099164';
 
@@ -22,8 +22,10 @@ const NUMERO_AUTORIZADO = '5583998099164';
 const LINK_CATALOGO = 'https://catalogo-aluminio-jr.onrender.com';
 const LINK_KITS = 'https://catalogo-aluminio-jr.onrender.com/kits-feirinha';
 
-// ===== CONTROLE DE PRIMEIRO CONTATO =====
-const primeirosContatos = new Set();
+// ===== CONTROLE DE PRIMEIRO CONTATO (APENAS SEU NÚMERO) =====
+const primeiroContato = {
+  '5583998099164': false
+};
 
 // ===== ENVIO WHATSAPP =====
 async function enviarMensagem(phone, message) {
@@ -61,27 +63,27 @@ app.post('/webhook', async (req, res) => {
 
   if (!phone || !texto) return;
 
-  // ===== RESET DE TESTES (APENAS VOCÊ) =====
-  if (phone === NUMERO_AUTORIZADO && texto === '123reset') {
-    primeirosContatos.clear();
-    await enviarMensagem(phone, '✅ Tabela de primeiro contato zerada.');
-    console.log('♻️ Primeiro contato resetado manualmente');
-    return;
-  }
-
-  // ===== PRIMEIRO CONTATO =====
-  if (!primeirosContatos.has(phone)) {
-    primeirosContatos.add(phone);
-    await enviarMensagem(phone, mensagemInicial());
-    return;
-  }
-
-  // 🔒 BLOQUEIO TOTAL DE IA PARA OUTROS NÚMEROS
+  // 🔒 REGRA MÁXIMA: SÓ RESPONDE AO SEU NÚMERO
   if (phone !== NUMERO_AUTORIZADO) {
     return;
   }
 
-  // ===== A PARTIR DAQUI, SÓ VOCÊ =====
+  // ===== RESET MANUAL =====
+  if (texto === '123reset') {
+    primeiroContato[NUMERO_AUTORIZADO] = false;
+    await enviarMensagem(phone, '✅ Primeiro contato resetado.');
+    console.log('♻️ Reset manual executado');
+    return;
+  }
+
+  // ===== PRIMEIRO CONTATO (UMA ÚNICA VEZ) =====
+  if (!primeiroContato[NUMERO_AUTORIZADO]) {
+    primeiroContato[NUMERO_AUTORIZADO] = true;
+    await enviarMensagem(phone, mensagemInicial());
+    return;
+  }
+
+  // ===== IA (SÓ DEPOIS DO PRIMEIRO CONTATO) =====
   try {
     console.log('📩 Mensagem recebida:', texto);
 
