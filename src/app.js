@@ -14,17 +14,17 @@ const INSTANCE_ID = process.env.INSTANCE_ID;
 const TOKEN_INSTANCIA = process.env.TOKEN_INSTANCIA;
 const CLIENT_TOKEN = process.env.CLIENT_TOKEN;
 
-// 🔒 SEU NÚMERO (SOMENTE DÍGITOS)
-const NUMERO_AUTORIZADO = '5583998099164';
+// 🔒 SEU NÚMERO (EXATAMENTE COMO O Z-API ENVIA)
+const NUMERO_AUTORIZADO = '558398099164';
 
 // ===== LINKS =====
 const LINK_CATALOGO = 'https://catalogo-aluminio-jr.onrender.com';
 const LINK_KITS = 'https://catalogo-aluminio-jr.onrender.com/kits-feirinha';
 
-// ===== CONTROLE DE PRIMEIRO CONTATO (APENAS VOCÊ) =====
+// ===== CONTROLE DE PRIMEIRO CONTATO =====
 let primeiroContato = false;
 
-// ===== FUNÇÃO PARA NORMALIZAR TELEFONE =====
+// ===== NORMALIZA TELEFONE =====
 function normalizarTelefone(phone) {
   return phone
     .replace('@c.us', '')
@@ -76,15 +76,15 @@ app.post('/webhook', async (req, res) => {
     return;
   }
 
-  // ===== RESET MANUAL =====
+  // ===== RESET =====
   if (texto === '123reset') {
     primeiroContato = false;
     await enviarMensagem(phone, '✅ Primeiro contato resetado.');
-    console.log('♻️ Reset manual executado');
+    console.log('♻️ Reset executado');
     return;
   }
 
-  // ===== PRIMEIRO CONTATO (UMA VEZ) =====
+  // ===== PRIMEIRO CONTATO =====
   if (!primeiroContato) {
     primeiroContato = true;
     await enviarMensagem(phone, mensagemInicial());
