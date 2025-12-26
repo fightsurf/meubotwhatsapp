@@ -1,7 +1,7 @@
 const express = require('express');
 const axios = require('axios');
-const fs = require('fs');
 const path = require('path');
+const fs = require('fs');
 
 const { responderComIA } = require(path.join(__dirname, 'ia.js'));
 
@@ -15,17 +15,15 @@ const INSTANCE_ID = process.env.INSTANCE_ID;
 const TOKEN_INSTANCIA = process.env.TOKEN_INSTANCIA;
 const CLIENT_TOKEN = process.env.CLIENT_TOKEN;
 
-// ===== PERSISTÊNCIA (PRIMEIRO CONTATO) =====
+// ===== CATÁLOGO =====
+const CATALOGO_API = 'https://catalogo-aluminio-jr.onrender.com/api/produtos';
+
+// ===== PRIMEIRO CONTATO =====
 const DATA_DIR = '/opt/render/project/data';
 const CLIENTES_PATH = path.join(DATA_DIR, 'clientes.json');
 
-if (!fs.existsSync(DATA_DIR)) {
-  fs.mkdirSync(DATA_DIR, { recursive: true });
-}
-
-if (!fs.existsSync(CLIENTES_PATH)) {
-  fs.writeFileSync(CLIENTES_PATH, '{}');
-}
+if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
+if (!fs.existsSync(CLIENTES_PATH)) fs.writeFileSync(CLIENTES_PATH, '{}');
 
 function lerClientes() {
   try {
@@ -35,8 +33,8 @@ function lerClientes() {
   }
 }
 
-function salvarClientes(clientes) {
-  fs.writeFileSync(CLIENTES_PATH, JSON.stringify(clientes, null, 2));
+function salvarClientes(c) {
+  fs.writeFileSync(CLIENTES_PATH, JSON.stringify(c, null, 2));
 }
 
 // ===== ENVIO WHATSAPP =====
@@ -53,6 +51,35 @@ async function enviarMensagem(phone, message) {
   );
 }
 
+async function enviarImagem(phone, imageUrl, caption) {
+  return axios.post(
+    `https://api.z-api.io/instances/${INSTANCE_ID}/token/${TOKEN_INSTANCIA}/send-image`,
+    {
+      phone,
+      image: imageUrl,
+      caption
+    },
+    {
+      headers: {
+        'Client-Token': CLIENT_TOKEN,
+        'Content-Type': 'application/json'
+      }
+    }
+  );
+}
+
+// ===== BUSCA NO CATÁLOGO =====
+async function buscarProdutosPorTexto(texto) {
+  const resp = await axios.get(CATALOGO_API);
+  const produtos = resp.data;
+
+  const termo = texto.toLowerCase();
+
+  return produtos.filter(p =>
+    p.nome.toLowerCase().includes(termo)
+  );
+}
+
 // ===== WEBHOOK =====
 app.post('/webhook', async (req, res) => {
   res.sendStatus(200);
@@ -62,14 +89,12 @@ app.post('/webhook', async (req, res) => {
 
   if (!phone || !texto) return;
 
-  const textoLower = texto.trim().toLowerCase();
+  const textoLower = texto.toLowerCase();
   const clientes = lerClientes();
 
   // ===== PRIMEIRO CONTATO =====
   if (!clientes[phone]) {
-    clientes[phone] = {
-      primeiroContato: new Date().toISOString()
-    };
+    clientes[phone] = true;
     salvarClientes(clientes);
 
     await enviarMensagem(
@@ -85,22 +110,31 @@ app.post('/webhook', async (req, res) => {
     return;
   }
 
-  // ===== PEDIDO DE CATÁLOGO =====
+  // ===== CONSULTA DE PREÇO =====
   if (
-    textoLower.includes('catalogo') ||
-    textoLower.includes('catálogo') ||
     textoLower.includes('preço') ||
-    textoLower.includes('precos') ||
-    textoLower.includes('produtos')
+    textoLower.includes('preco') ||
+    textoLower.includes('quanto custa') ||
+    textoLower.includes('valor')
   ) {
-    await enviarMensagem(
-      phone,
-      'Catálogo completo 👇\nhttps://catalogo-aluminio-jr.onrender.com'
-    );
-    return;
+    const encontrados = await buscarProdutosPorTexto(textoLower);
+
+    if (encontrados.length > 0) {
+      for (const p of encontrados) {
+        const legenda =
+          `${p.nome}\n💰 R$ ${p.preco.toFixed(2).replace('.', ',')}`;
+
+        if (p.foto) {
+          await enviarImagem(phone, p.foto, legenda);
+        } else {
+          await enviarMensagem(phone, legenda);
+        }
+      }
+      return;
+    }
   }
 
-  // ===== IA (QUALQUER OUTRA COISA) =====
+  // ===== IA (QUALQUER OUTRO CASO) =====
   try {
     const resposta = await responderComIA(texto);
     await enviarMensagem(phone, resposta);
@@ -112,5 +146,5 @@ app.post('/webhook', async (req, res) => {
 // ===== SERVER =====
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => {
-  console.log('🟢 Bot com primeiro contato refinado');
+  console.log('🟢 Bot com preços individuais + fotos ativo');
 });
