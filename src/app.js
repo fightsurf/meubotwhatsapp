@@ -15,10 +15,7 @@ const INSTANCE_ID = process.env.INSTANCE_ID;
 const TOKEN_INSTANCIA = process.env.TOKEN_INSTANCIA;
 const CLIENT_TOKEN = process.env.CLIENT_TOKEN;
 
-// número autorizado (somente você)
-const NUMERO_AUTORIZADO = '558398099164';
-
-// ===== PERSISTÊNCIA =====
+// ===== PERSISTÊNCIA (PRIMEIRO CONTATO) =====
 const DATA_DIR = '/opt/render/project/data';
 const CLIENTES_PATH = path.join(DATA_DIR, 'clientes.json');
 
@@ -68,17 +65,7 @@ app.post('/webhook', async (req, res) => {
   const textoLower = texto.trim().toLowerCase();
   const clientes = lerClientes();
 
-  // ===== RESET PARA TESTES =====
-  if (phone === NUMERO_AUTORIZADO && textoLower === '123reset') {
-    salvarClientes({});
-    await enviarMensagem(
-      phone,
-      '♻️ Reset realizado.\nPrimeiro contato zerado.'
-    );
-    return;
-  }
-
-  // ===== PRIMEIRO CONTATO (TRÁFEGO) =====
+  // ===== PRIMEIRO CONTATO =====
   if (!clientes[phone]) {
     clientes[phone] = {
       primeiroContato: new Date().toISOString()
@@ -87,34 +74,33 @@ app.post('/webhook', async (req, res) => {
 
     await enviarMensagem(
       phone,
-      'Olá! 👋\n' +
-      'Aqui é o atendimento da *Alumínio JR*.\n\n' +
-      '📦 *Catálogo completo*\n' +
+      'ALUMÍNIO JR\n\n' +
+      'Catálogo completo\n' +
       '👉 https://catalogo-aluminio-jr.onrender.com\n\n' +
-      '🔥 *KITS FEIRINHA*\n' +
-      'Panela de pressão Alumínio JR a partir de *R$ 14,00*\n' +
+      'KITS FEIRINHA\n' +
+      'Panela de pressão a partir de R$ 14\n' +
       '👉 https://catalogo-aluminio-jr.onrender.com/kits-feirinha\n\n' +
-      'Se quiser, me diga o que você procura 😉'
+      'Meu nome é George, em que posso te ajudar?'
     );
     return;
   }
 
-  // ===== PEDIDOS DE CATÁLOGO =====
+  // ===== PEDIDO DE CATÁLOGO =====
   if (
     textoLower.includes('catalogo') ||
     textoLower.includes('catálogo') ||
-    textoLower.includes('produtos') ||
     textoLower.includes('preço') ||
-    textoLower.includes('precos')
+    textoLower.includes('precos') ||
+    textoLower.includes('produtos')
   ) {
     await enviarMensagem(
       phone,
-      '📦 Catálogo Alumínio JR\nhttps://catalogo-aluminio-jr.onrender.com'
+      'Catálogo completo 👇\nhttps://catalogo-aluminio-jr.onrender.com'
     );
     return;
   }
 
-  // ===== IA (APÓS PRIMEIRO CONTATO) =====
+  // ===== IA (QUALQUER OUTRA COISA) =====
   try {
     const resposta = await responderComIA(texto);
     await enviarMensagem(phone, resposta);
@@ -126,5 +112,5 @@ app.post('/webhook', async (req, res) => {
 // ===== SERVER =====
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => {
-  console.log('🟢 Bot com primeiro contato otimizado para tráfego');
+  console.log('🟢 Bot com primeiro contato refinado');
 });
