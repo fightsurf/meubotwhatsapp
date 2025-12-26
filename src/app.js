@@ -14,16 +14,17 @@ const INSTANCE_ID = process.env.INSTANCE_ID;
 const TOKEN_INSTANCIA = process.env.TOKEN_INSTANCIA;
 const CLIENT_TOKEN = process.env.CLIENT_TOKEN;
 
-// 🔒 SEU NÚMERO
-const NUMERO_AUTORIZADO = '558398099164';
+// 🤖 NÚMERO DO BOT (ADMIN)
+const NUMERO_BOT = '558399792085';
 
 // ===== LINKS =====
 const LINK_CATALOGO = 'https://catalogo-aluminio-jr.onrender.com';
 const LINK_KITS = 'https://catalogo-aluminio-jr.onrender.com/kits-feirinha';
 const API_PRODUTOS = 'https://catalogo-aluminio-jr.onrender.com/api/produtos';
 
-// ===== CONTROLE DE PRIMEIRO CONTATO =====
-let primeiroContato = false;
+// ===== CONTROLES =====
+const primeirosContatos = new Set();      // primeiro contato por cliente
+const clientesBloqueados = new Set();     // clientes assumidos manualmente
 
 // ===== NORMALIZA TELEFONE =====
 function normalizarTelefone(phone) {
@@ -51,10 +52,7 @@ async function enviarMensagem(phone, message) {
 async function enviarImagem(phone, imageUrl) {
   return axios.post(
     `https://api.z-api.io/instances/${INSTANCE_ID}/token/${TOKEN_INSTANCIA}/send-image`,
-    {
-      phone,
-      image: imageUrl
-    },
+    { phone, image: imageUrl },
     {
       headers: {
         'Client-Token': CLIENT_TOKEN,
@@ -95,30 +93,60 @@ app.post('/webhook', async (req, res) => {
   console.log('📞 Phone:', phone);
   console.log('📩 Texto:', textoOriginal);
 
-  // 🔒 SÓ VOCÊ
-  if (phone !== NUMERO_AUTORIZADO) return;
+  // =====================================================
+  // 🔐 COMANDOS ADMIN (SÓ DO NÚMERO DO BOT)
+  // =====================================================
+  if (phone === NUMERO_BOT) {
 
-  // ===== RESET =====
-  if (texto === '123reset') {
-    primeiroContato = false;
-    await enviarMensagem(phone, '✅ Primeiro contato resetado.');
+    // assumir cliente
+    if (texto.startsWith('#assumir')) {
+      const alvo = texto.replace('#assumir', '').trim();
+      if (alvo) {
+        clientesBloqueados.add(alvo);
+        await enviarMensagem(phone, `🔒 Bot bloqueado para o número ${alvo}`);
+      }
+      return;
+    }
+
+    // liberar cliente
+    if (texto.startsWith('#liberar')) {
+      const alvo = texto.replace('#liberar', '').trim();
+      if (alvo) {
+        clientesBloqueados.delete(alvo);
+        await enviarMensagem(phone, `🔓 Bot liberado para o número ${alvo}`);
+      }
+      return;
+    }
+  }
+
+  // =====================================================
+  // 🚫 CLIENTE ASSUMIDO MANUALMENTE
+  // =====================================================
+  if (clientesBloqueados.has(phone)) {
+    console.log('⛔ Cliente assumido manualmente. Bot não responde.');
     return;
   }
 
-  // ===== PRIMEIRO CONTATO =====
-  if (!primeiroContato) {
-    primeiroContato = true;
+  // =====================================================
+  // 👋 PRIMEIRO CONTATO
+  // =====================================================
+  if (!primeirosContatos.has(phone)) {
+    primeirosContatos.add(phone);
     await enviarMensagem(phone, mensagemInicial());
     return;
   }
 
-  // ===== PEDIDO DE CATÁLOGO =====
+  // =====================================================
+  // 📦 CATÁLOGO
+  // =====================================================
   if (texto.includes('catálogo') || texto.includes('catalogo')) {
     await enviarMensagem(phone, mensagemCatalogoDireta());
     return;
   }
 
-  // ===== BUSCA DE PRODUTO (LIMITADO A 3) =====
+  // =====================================================
+  // 🔍 BUSCA DE PRODUTOS (ATÉ 3)
+  // =====================================================
   try {
     const { data: produtos } = await axios.get(API_PRODUTOS);
 
@@ -133,20 +161,16 @@ app.post('/webhook', async (req, res) => {
     if (encontrados.length > 0) {
       const limitados = encontrados.slice(0, 3);
 
-      // 👉 FRASE INTRODUTÓRIA
       await enviarMensagem(
         phone,
         `Encontrei ${limitados.length} itens com o nome "${termoBusca}":`
       );
 
       for (const p of limitados) {
-        const precoFormatado =
+        const preco =
           `R$ ${Number(p.preco).toFixed(2).replace('.', ',')}`;
 
-        const linhaTexto =
-          `${p.nome}: *${precoFormatado}* 👇`;
-
-        await enviarMensagem(phone, linhaTexto);
+        await enviarMensagem(phone, `${p.nome}: *${preco}* 👇`);
 
         if (p.foto) {
           await enviarImagem(phone, p.foto);
@@ -159,7 +183,9 @@ app.post('/webhook', async (req, res) => {
     console.error('❌ ERRO CATÁLOGO:', err.message);
   }
 
-  // ===== IA =====
+  // =====================================================
+  // 🤖 IA
+  // =====================================================
   try {
     const resposta = await responderComIA(textoOriginal);
     await enviarMensagem(phone, resposta);
