@@ -59,6 +59,14 @@ function mensagemInicial() {
   );
 }
 
+// ===== MENSAGEM CATÁLOGO DIRETA =====
+function mensagemCatalogoDireta() {
+  return (
+    `Catálogo completo Alumínio JR\n` +
+    `👉 ${LINK_CATALOGO}/`
+  );
+}
+
 // ===== WEBHOOK =====
 app.post('/webhook', async (req, res) => {
   res.sendStatus(200);
@@ -67,7 +75,7 @@ app.post('/webhook', async (req, res) => {
 
   const phoneRaw = req.body.phone;
   const phone = normalizarTelefone(phoneRaw);
-  const texto = req.body.text.message.trim();
+  const texto = req.body.text.message.trim().toLowerCase();
 
   console.log('📞 Phone recebido:', phoneRaw, '→ normalizado:', phone);
 
@@ -88,6 +96,18 @@ app.post('/webhook', async (req, res) => {
   if (!primeiroContato) {
     primeiroContato = true;
     await enviarMensagem(phone, mensagemInicial());
+    return;
+  }
+
+  // ===== PEDIDO DE CATÁLOGO (SEM IA) =====
+  if (
+    texto.includes('catálogo') ||
+    texto.includes('catalogo') ||
+    texto.includes('preço') ||
+    texto.includes('preços') ||
+    texto.includes('produtos')
+  ) {
+    await enviarMensagem(phone, mensagemCatalogoDireta());
     return;
   }
 
