@@ -14,12 +14,13 @@ const INSTANCE_ID = process.env.INSTANCE_ID;
 const TOKEN_INSTANCIA = process.env.TOKEN_INSTANCIA;
 const CLIENT_TOKEN = process.env.CLIENT_TOKEN;
 
-// 🔒 SEU NÚMERO (EXATAMENTE COMO O Z-API ENVIA)
+// 🔒 SEU NÚMERO (EXATO COMO CHEGA DO Z-API)
 const NUMERO_AUTORIZADO = '558398099164';
 
 // ===== LINKS =====
 const LINK_CATALOGO = 'https://catalogo-aluminio-jr.onrender.com';
 const LINK_KITS = 'https://catalogo-aluminio-jr.onrender.com/kits-feirinha';
+const API_PRODUTOS = 'https://catalogo-aluminio-jr.onrender.com/api/produtos';
 
 // ===== CONTROLE DE PRIMEIRO CONTATO =====
 let primeiroContato = false;
@@ -32,11 +33,29 @@ function normalizarTelefone(phone) {
     .replace(/\D/g, '');
 }
 
-// ===== ENVIO WHATSAPP =====
+// ===== ENVIO TEXTO =====
 async function enviarMensagem(phone, message) {
   return axios.post(
     `https://api.z-api.io/instances/${INSTANCE_ID}/token/${TOKEN_INSTANCIA}/send-text`,
     { phone, message },
+    {
+      headers: {
+        'Client-Token': CLIENT_TOKEN,
+        'Content-Type': 'application/json'
+      }
+    }
+  );
+}
+
+// ===== ENVIO IMAGEM =====
+async function enviarImagem(phone, imageUrl, caption) {
+  return axios.post(
+    `https://api.z-api.io/instances/${INSTANCE_ID}/token/${TOKEN_INSTANCIA}/send-image`,
+    {
+      phone,
+      image: imageUrl,
+      caption
+    },
     {
       headers: {
         'Client-Token': CLIENT_TOKEN,
@@ -59,11 +78,11 @@ function mensagemInicial() {
   );
 }
 
-// ===== MENSAGEM CATÁLOGO DIRETA =====
+// ===== CATÁLOGO DIRETO =====
 function mensagemCatalogoDireta() {
   return (
     `Catálogo completo Alumínio JR\n` +
-    `👉 ${LINK_CATALOGO}/`
+    `👉 ${LINK_CATALOGO}`
   );
 }
 
@@ -73,22 +92,20 @@ app.post('/webhook', async (req, res) => {
 
   if (!req.body.phone || !req.body.text?.message) return;
 
-  const phoneRaw = req.body.phone;
-  const phone = normalizarTelefone(phoneRaw);
-  const texto = req.body.text.message.trim().toLowerCase();
+  const phone = normalizarTelefone(req.body.phone);
+  const textoOriginal = req.body.text.message.trim();
+  const texto = textoOriginal.toLowerCase();
 
-  console.log('📞 Phone recebido:', phoneRaw, '→ normalizado:', phone);
+  console.log('📞 Phone:', phone);
+  console.log('📩 Texto:', textoOriginal);
 
-  // 🔒 REGRA MÁXIMA: SÓ VOCÊ
-  if (phone !== NUMERO_AUTORIZADO) {
-    return;
-  }
+  // 🔒 SÓ VOCÊ
+  if (phone !== NUMERO_AUTORIZADO) return;
 
   // ===== RESET =====
   if (texto === '123reset') {
     primeiroContato = false;
     await enviarMensagem(phone, '✅ Primeiro contato resetado.');
-    console.log('♻️ Reset executado');
     return;
   }
 
@@ -99,33 +116,67 @@ app.post('/webhook', async (req, res) => {
     return;
   }
 
-  // ===== PEDIDO DE CATÁLOGO (SEM IA) =====
+  // ===== PEDIDO DE CATÁLOGO =====
   if (
     texto.includes('catálogo') ||
-    texto.includes('catalogo') ||
-    texto.includes('preço') ||
-    texto.includes('preços') ||
-    texto.includes('produtos')
+    texto.includes('catalogo')
   ) {
     await enviarMensagem(phone, mensagemCatalogoDireta());
     return;
   }
 
+  // ===== PEDIDO DE PREÇO =====
+  if (
+    texto.includes('preço') ||
+    texto.includes('precos') ||
+    texto.includes('valor') ||
+    texto.includes('quanto custa')
+  ) {
+    try {
+      const { data: produtos } = await axios.get(API_PRODUTOS);
+
+      const termo = texto
+        .replace('preço', '')
+        .replace('valor', '')
+        .replace('quanto custa', '')
+        .trim();
+
+      const encontrados = produtos.filter(p =>
+        p.nome.toLowerCase().includes(termo)
+      );
+
+      if (encontrados.length === 0) {
+        await enviarMensagem(
+          phone,
+          'Não encontrei esse item no catálogo. Pode especificar melhor?'
+        );
+        return;
+      }
+
+      for (const p of encontrados) {
+        const textoProduto = `${p.nome} — R$ ${p.preco.toFixed(2).replace('.', ',')}`;
+        await enviarMensagem(phone, textoProduto);
+
+        if (p.foto) {
+          await enviarImagem(phone, p.foto, textoProduto);
+        }
+      }
+
+      return;
+
+    } catch (err) {
+      console.error('❌ ERRO CATÁLOGO:', err.message);
+      await enviarMensagem(phone, 'Erro ao consultar o catálogo.');
+      return;
+    }
+  }
+
   // ===== IA =====
   try {
-    console.log('📩 Mensagem recebida:', texto);
-
-    const resposta = await responderComIA(texto);
-
-    console.log('🤖 Resposta IA:', resposta);
-
+    const resposta = await responderComIA(textoOriginal);
     await enviarMensagem(phone, resposta);
-
   } catch (err) {
-    console.error(
-      '❌ ERRO IA:',
-      err.response?.data || err.message
-    );
+    console.error('❌ ERRO IA:', err.message);
   }
 });
 
