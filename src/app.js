@@ -4,7 +4,7 @@ const axios = require('axios');
 const app = express();
 app.use(express.json());
 
-console.log('🚀 Bot Alumínio JR iniciado (DESATIVADO)');
+console.log('🚀 Bot Alumínio JR iniciado (ATENDIMENTO DESATIVADO)');
 
 // ===== Z-API =====
 const INSTANCE_ID = process.env.INSTANCE_ID;
@@ -23,7 +23,10 @@ function normalizarTelefone(phone) {
 async function enviarMensagem(phone, message) {
   return axios.post(
     `https://api.z-api.io/instances/${INSTANCE_ID}/token/${TOKEN_INSTANCIA}/send-text`,
-    { phone, message },
+    {
+      phone,
+      message
+    },
     {
       headers: {
         'Client-Token': CLIENT_TOKEN,
@@ -43,17 +46,15 @@ app.post('/webhook', async (req, res) => {
   const texto = req.body.text.message.trim();
 
   console.log('📞 Phone:', phone);
-  console.log('📩 Texto:', texto);
+  console.log('📩 Texto recebido:', texto);
 
   // =====================================================
-  // 🚫 BOT DESATIVADO — NÃO CONVERSA
+  // 🚫 ATENDIMENTO AUTOMÁTICO DESLIGADO
   // =====================================================
   await enviarMensagem(
     phone,
-    'Atendimento automático temporariamente indisponível.\nUm atendente humano irá responder.'
+    'Atendimento automático temporariamente desligado.\nUm atendente humano irá responder em breve.'
   );
-
-  return;
 });
 
 // ===== SERVER =====
