@@ -14,7 +14,7 @@ const INSTANCE_ID = process.env.INSTANCE_ID;
 const TOKEN_INSTANCIA = process.env.TOKEN_INSTANCIA;
 const CLIENT_TOKEN = process.env.CLIENT_TOKEN;
 
-// 🤖 NÚMERO DO BOT (ADMIN)
+// 🤖 NÚMERO DO BOT / ADMIN
 const NUMERO_BOT = '558399792085';
 
 // ===== LINKS =====
@@ -23,8 +23,8 @@ const LINK_KITS = 'https://catalogo-aluminio-jr.onrender.com/kits-feirinha';
 const API_PRODUTOS = 'https://catalogo-aluminio-jr.onrender.com/api/produtos';
 
 // ===== CONTROLES =====
-const primeirosContatos = new Set();      // primeiro contato por cliente
-const clientesBloqueados = new Set();     // clientes assumidos manualmente
+const primeirosContatos = new Set();      // clientes já atendidos
+const clientesAssumidos = new Set();      // clientes sob atendimento humano
 
 // ===== NORMALIZA TELEFONE =====
 function normalizarTelefone(phone) {
@@ -66,11 +66,8 @@ async function enviarImagem(phone, imageUrl) {
 function mensagemInicial() {
   return (
     `ALUMÍNIO JR\n\n` +
-    `Catálogo completo\n` +
-    `👉 ${LINK_CATALOGO}\n\n` +
-    `KITS FEIRINHA\n` +
-    `Panela de pressão a partir de R$ 14\n` +
-    `👉 ${LINK_KITS}\n\n` +
+    `Catálogo completo\n👉 ${LINK_CATALOGO}\n\n` +
+    `KITS FEIRINHA\nPanela de pressão a partir de R$ 14\n👉 ${LINK_KITS}\n\n` +
     `Meu nome é George, em que posso te ajudar?`
   );
 }
@@ -94,36 +91,36 @@ app.post('/webhook', async (req, res) => {
   console.log('📩 Texto:', textoOriginal);
 
   // =====================================================
-  // 🔐 COMANDOS ADMIN (SÓ DO NÚMERO DO BOT)
+  // 🔐 COMANDOS DO ADMIN (USANDO MENSAGEM CITADA)
   // =====================================================
-  if (phone === NUMERO_BOT) {
+  if (phone === NUMERO_BOT && req.body.quoted?.participant) {
 
-    // assumir cliente
-    if (texto.startsWith('#assumir')) {
-      const alvo = texto.replace('#assumir', '').trim();
-      if (alvo) {
-        clientesBloqueados.add(alvo);
-        await enviarMensagem(phone, `🔒 Bot bloqueado para o número ${alvo}`);
-      }
+    const clienteAlvo = normalizarTelefone(req.body.quoted.participant);
+
+    if (texto === '#assumir') {
+      clientesAssumidos.add(clienteAlvo);
+      await enviarMensagem(
+        phone,
+        `🔒 Atendimento assumido. Bot não responderá ${clienteAlvo}`
+      );
       return;
     }
 
-    // liberar cliente
-    if (texto.startsWith('#liberar')) {
-      const alvo = texto.replace('#liberar', '').trim();
-      if (alvo) {
-        clientesBloqueados.delete(alvo);
-        await enviarMensagem(phone, `🔓 Bot liberado para o número ${alvo}`);
-      }
+    if (texto === '#liberar') {
+      clientesAssumidos.delete(clienteAlvo);
+      await enviarMensagem(
+        phone,
+        `🔓 Atendimento liberado. Bot voltou a responder ${clienteAlvo}`
+      );
       return;
     }
   }
 
   // =====================================================
-  // 🚫 CLIENTE ASSUMIDO MANUALMENTE
+  // 🚫 CLIENTE EM ATENDIMENTO HUMANO
   // =====================================================
-  if (clientesBloqueados.has(phone)) {
-    console.log('⛔ Cliente assumido manualmente. Bot não responde.');
+  if (clientesAssumidos.has(phone)) {
+    console.log('⛔ Atendimento humano ativo. Bot ignorou.');
     return;
   }
 
@@ -153,10 +150,9 @@ app.post('/webhook', async (req, res) => {
     const palavras = texto.split(' ').filter(p => p.length > 2);
     const termoBusca = palavras[0] || 'produto';
 
-    const encontrados = produtos.filter(p => {
-      const nome = p.nome.toLowerCase();
-      return palavras.some(palavra => nome.includes(palavra));
-    });
+    const encontrados = produtos.filter(p =>
+      palavras.some(palavra => p.nome.toLowerCase().includes(palavra))
+    );
 
     if (encontrados.length > 0) {
       const limitados = encontrados.slice(0, 3);
