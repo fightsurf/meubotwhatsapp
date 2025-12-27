@@ -7,7 +7,7 @@ const { responderComIA } = require(path.join(__dirname, 'ia.js'));
 const app = express();
 app.use(express.json());
 
-console.log('🚀 Bot Alumínio JR iniciado (IA SEMPRE ATIVA)');
+console.log('🚀 Bot Alumínio JR iniciado (IA-FIRST PURO)');
 
 // ===== Z-API =====
 const INSTANCE_ID = process.env.INSTANCE_ID;
@@ -26,10 +26,7 @@ function normalizarTelefone(phone) {
 async function enviarMensagem(phone, message) {
   return axios.post(
     `https://api.z-api.io/instances/${INSTANCE_ID}/token/${TOKEN_INSTANCIA}/send-text`,
-    {
-      phone,
-      message
-    },
+    { phone, message },
     {
       headers: {
         'Client-Token': CLIENT_TOKEN,
@@ -52,18 +49,13 @@ app.post('/webhook', async (req, res) => {
   console.log('📩 Texto:', texto);
 
   try {
-    // 👉 TODA DECISÃO VEM DA IA
+    // 🔥 IA É A ÚNICA FONTE DE RESPOSTA
     const respostaIA = await responderComIA(texto);
 
     await enviarMensagem(phone, respostaIA);
 
   } catch (err) {
-    console.error('❌ ERRO IA:', err.message);
-
-    await enviarMensagem(
-      phone,
-      'Atendimento automático indisponível no momento.'
-    );
+    console.error('❌ ERRO GERAL:', err.message);
   }
 });
 
