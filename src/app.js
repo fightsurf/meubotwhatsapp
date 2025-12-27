@@ -7,7 +7,7 @@ const { responderComIA } = require(path.join(__dirname, 'ia.js'));
 const app = express();
 app.use(express.json());
 
-console.log('🚀 Bot Alumínio JR iniciado');
+console.log('🚀 Bot Alumínio JR iniciado (IA-FIRST)');
 
 // ===== Z-API =====
 const INSTANCE_ID = process.env.INSTANCE_ID;
@@ -19,12 +19,11 @@ const NUMERO_BOT = '558399792085';
 
 // ===== LINKS =====
 const LINK_CATALOGO = 'https://catalogo-aluminio-jr.onrender.com';
-const LINK_KITS = 'https://catalogo-aluminio-jr.onrender.com/kits-feirinha';
 const API_PRODUTOS = 'https://catalogo-aluminio-jr.onrender.com/api/produtos';
 
 // ===== CONTROLES =====
-const primeirosContatos = new Set();      // clientes já atendidos
-const clientesAssumidos = new Set();      // clientes sob atendimento humano
+const primeirosContatos = new Set();
+const clientesAssumidos = new Set();
 
 // ===== NORMALIZA TELEFONE =====
 function normalizarTelefone(phone) {
@@ -67,14 +66,8 @@ function mensagemInicial() {
   return (
     `ALUMÍNIO JR\n\n` +
     `Catálogo completo\n👉 ${LINK_CATALOGO}\n\n` +
-    `KITS FEIRINHA\nPanela de pressão a partir de R$ 14\n👉 ${LINK_KITS}\n\n` +
     `Meu nome é George, em que posso te ajudar?`
   );
-}
-
-// ===== CATÁLOGO DIRETO =====
-function mensagemCatalogoDireta() {
-  return `Catálogo completo Alumínio JR\n👉 ${LINK_CATALOGO}`;
 }
 
 // ===== WEBHOOK =====
@@ -85,33 +78,25 @@ app.post('/webhook', async (req, res) => {
 
   const phone = normalizarTelefone(req.body.phone);
   const textoOriginal = req.body.text.message.trim();
-  const texto = textoOriginal.toLowerCase();
 
   console.log('📞 Phone:', phone);
   console.log('📩 Texto:', textoOriginal);
 
   // =====================================================
-  // 🔐 COMANDOS DO ADMIN (USANDO MENSAGEM CITADA)
+  // 🔐 COMANDOS ADMIN (MENSAGEM CITADA)
   // =====================================================
   if (phone === NUMERO_BOT && req.body.quoted?.participant) {
-
     const clienteAlvo = normalizarTelefone(req.body.quoted.participant);
 
-    if (texto === '#assumir') {
+    if (textoOriginal === '#assumir') {
       clientesAssumidos.add(clienteAlvo);
-      await enviarMensagem(
-        phone,
-        `🔒 Atendimento assumido. Bot não responderá ${clienteAlvo}`
-      );
+      await enviarMensagem(phone, `🔒 Atendimento assumido para ${clienteAlvo}`);
       return;
     }
 
-    if (texto === '#liberar') {
+    if (textoOriginal === '#liberar') {
       clientesAssumidos.delete(clienteAlvo);
-      await enviarMensagem(
-        phone,
-        `🔓 Atendimento liberado. Bot voltou a responder ${clienteAlvo}`
-      );
+      await enviarMensagem(phone, `🔓 Atendimento liberado para ${clienteAlvo}`);
       return;
     }
   }
@@ -120,7 +105,7 @@ app.post('/webhook', async (req, res) => {
   // 🚫 CLIENTE EM ATENDIMENTO HUMANO
   // =====================================================
   if (clientesAssumidos.has(phone)) {
-    console.log('⛔ Atendimento humano ativo. Bot ignorou.');
+    console.log('⛔ Cliente em atendimento humano');
     return;
   }
 
@@ -130,39 +115,62 @@ app.post('/webhook', async (req, res) => {
   if (!primeirosContatos.has(phone)) {
     primeirosContatos.add(phone);
     await enviarMensagem(phone, mensagemInicial());
+  }
+
+  // =====================================================
+  // 🤖 IA PRIMEIRO
+  // =====================================================
+  const respostaIA = await responderComIA(textoOriginal);
+
+  // ===== A IA NÃO PEDIU AÇÃO → RESPONDE DIRETO =====
+  if (!respostaIA.startsWith('INTENCAO:')) {
+    await enviarMensagem(phone, respostaIA);
     return;
   }
 
   // =====================================================
-  // 📦 CATÁLOGO
+  // 📌 INTERPRETA INTENÇÃO DA IA
   // =====================================================
-  if (texto.includes('catálogo') || texto.includes('catalogo')) {
-    await enviarMensagem(phone, mensagemCatalogoDireta());
-    return;
-  }
+  const linhas = respostaIA.split('\n');
+  const intencao = linhas[0].replace('INTENCAO:', '').trim();
+  const termo = linhas.find(l => l.startsWith('TERMO:'))?.replace('TERMO:', '').trim();
 
   // =====================================================
-  // 🔍 BUSCA DE PRODUTOS (ATÉ 3)
+  // 📚 CATÁLOGO
   // =====================================================
-  try {
-    const { data: produtos } = await axios.get(API_PRODUTOS);
-
-    const palavras = texto.split(' ').filter(p => p.length > 2);
-    const termoBusca = palavras[0] || 'produto';
-
-    const encontrados = produtos.filter(p =>
-      palavras.some(palavra => p.nome.toLowerCase().includes(palavra))
+  if (intencao === 'CATALOGO') {
+    await enviarMensagem(
+      phone,
+      `Catálogo completo Alumínio JR\n👉 ${LINK_CATALOGO}`
     );
+    return;
+  }
 
-    if (encontrados.length > 0) {
-      const limitados = encontrados.slice(0, 3);
+  // =====================================================
+  // 📦 PRODUTO
+  // =====================================================
+  if (intencao === 'PRODUTO' && termo) {
+    try {
+      const { data: produtos } = await axios.get(API_PRODUTOS);
+
+      const encontrados = produtos.filter(p =>
+        p.nome.toLowerCase().includes(termo.toLowerCase())
+      ).slice(0, 3);
+
+      if (encontrados.length === 0) {
+        await enviarMensagem(
+          phone,
+          'Não encontrei esse item no catálogo. Pode especificar melhor?'
+        );
+        return;
+      }
 
       await enviarMensagem(
         phone,
-        `Encontrei ${limitados.length} itens com o nome "${termoBusca}":`
+        `Encontrei ${encontrados.length} itens com o nome "${termo}":`
       );
 
-      for (const p of limitados) {
+      for (const p of encontrados) {
         const preco =
           `R$ ${Number(p.preco).toFixed(2).replace('.', ',')}`;
 
@@ -173,21 +181,18 @@ app.post('/webhook', async (req, res) => {
         }
       }
       return;
+
+    } catch (err) {
+      console.error('❌ ERRO CATÁLOGO:', err.message);
+      await enviarMensagem(phone, 'Erro ao consultar o catálogo.');
+      return;
     }
-
-  } catch (err) {
-    console.error('❌ ERRO CATÁLOGO:', err.message);
   }
 
   // =====================================================
-  // 🤖 IA
+  // 🤖 FALLBACK
   // =====================================================
-  try {
-    const resposta = await responderComIA(textoOriginal);
-    await enviarMensagem(phone, resposta);
-  } catch (err) {
-    console.error('❌ ERRO IA:', err.message);
-  }
+  await enviarMensagem(phone, respostaIA);
 });
 
 // ===== SERVER =====
