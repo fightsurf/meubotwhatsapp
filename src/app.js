@@ -1,18 +1,9 @@
 const express = require('express');
-const axios = require('axios');
-const path = require('path');
-
-const { responderComIA } = require(path.join(__dirname, 'ia.js'));
 
 const app = express();
 app.use(express.json());
 
 console.log('🚀 Bot Alumínio JR iniciado (IA-FIRST PURO)');
-
-// ===== Z-API =====
-const INSTANCE_ID = process.env.INSTANCE_ID;
-const TOKEN_INSTANCIA = process.env.TOKEN_INSTANCIA;
-const CLIENT_TOKEN = process.env.CLIENT_TOKEN;
 
 // ===== NORMALIZA TELEFONE =====
 function normalizarTelefone(phone) {
@@ -20,20 +11,6 @@ function normalizarTelefone(phone) {
     .replace('@c.us', '')
     .replace('@lid', '')
     .replace(/\D/g, '');
-}
-
-// ===== ENVIO TEXTO =====
-async function enviarMensagem(phone, message) {
-  return axios.post(
-    `https://api.z-api.io/instances/${INSTANCE_ID}/token/${TOKEN_INSTANCIA}/send-text`,
-    { phone, message },
-    {
-      headers: {
-        'Client-Token': CLIENT_TOKEN,
-        'Content-Type': 'application/json'
-      }
-    }
-  );
 }
 
 // ===== WEBHOOK =====
@@ -48,15 +25,7 @@ app.post('/webhook', async (req, res) => {
   console.log('📞 Phone:', phone);
   console.log('📩 Texto:', texto);
 
-  try {
-    // 🔥 IA É A ÚNICA FONTE DE RESPOSTA
-    const respostaIA = await responderComIA(texto);
-
-    await enviarMensagem(phone, respostaIA);
-
-  } catch (err) {
-    console.error('❌ ERRO GERAL:', err.message);
-  }
+  console.log('🤖 Respostas automáticas desativadas; nenhuma mensagem será enviada.');
 });
 
 // ===== SERVER =====
