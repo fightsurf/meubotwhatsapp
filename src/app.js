@@ -1,10 +1,13 @@
 const express = require('express');
 const axios = require('axios');
+const path = require('path');
+
+const { responderComIA } = require(path.join(__dirname, 'ia.js'));
 
 const app = express();
 app.use(express.json());
 
-console.log('🚀 Bot Alumínio JR iniciado (ATENDIMENTO DESATIVADO)');
+console.log('🚀 Bot Alumínio JR iniciado (IA SEMPRE ATIVA)');
 
 // ===== Z-API =====
 const INSTANCE_ID = process.env.INSTANCE_ID;
@@ -46,15 +49,22 @@ app.post('/webhook', async (req, res) => {
   const texto = req.body.text.message.trim();
 
   console.log('📞 Phone:', phone);
-  console.log('📩 Texto recebido:', texto);
+  console.log('📩 Texto:', texto);
 
-  // =====================================================
-  // 🚫 ATENDIMENTO AUTOMÁTICO DESLIGADO
-  // =====================================================
-  await enviarMensagem(
-    phone,
-    'Atendimento automático temporariamente desligado.\nUm atendente humano irá responder em breve.'
-  );
+  try {
+    // 👉 TODA DECISÃO VEM DA IA
+    const respostaIA = await responderComIA(texto);
+
+    await enviarMensagem(phone, respostaIA);
+
+  } catch (err) {
+    console.error('❌ ERRO IA:', err.message);
+
+    await enviarMensagem(
+      phone,
+      'Atendimento automático indisponível no momento.'
+    );
+  }
 });
 
 // ===== SERVER =====
