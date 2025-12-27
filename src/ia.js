@@ -12,14 +12,60 @@ async function responderComIA(texto) {
         messages: [
           {
             role: 'system',
-            content: PROMPT_BASE
+            content: `
+${PROMPT_BASE}
+
+REGRAS IMPORTANTES (OBRIGATÓRIO):
+- Responda SEMPRE em JSON válido
+- Nunca escreva texto fora do JSON
+- Escolha UMA ação abaixo
+
+AÇÕES POSSÍVEIS:
+1) responder
+{
+  "acao": "responder",
+  "mensagem": "texto curto para o cliente"
+}
+
+2) buscar_produto
+{
+  "acao": "buscar_produto",
+  "termo": "palavra chave do produto",
+  "limite": 3
+}
+
+3) catalogo
+{
+  "acao": "catalogo"
+}
+
+4) ignorar
+{
+  "acao": "ignorar"
+}
+
+EXEMPLOS:
+Cliente: "cafeteira"
+Resposta:
+{
+  "acao": "buscar_produto",
+  "termo": "cafeteira",
+  "limite": 3
+}
+
+Cliente: "me manda o catálogo"
+Resposta:
+{
+  "acao": "catalogo"
+}
+`
           },
           {
             role: 'user',
             content: texto
           }
         ],
-        temperature: 0.4
+        temperature: 0.3
       },
       {
         headers: {
@@ -29,21 +75,33 @@ async function responderComIA(texto) {
       }
     );
 
-    const resposta = response.data.choices?.[0]?.message?.content;
+    const conteudo = response.data.choices?.[0]?.message?.content;
 
-    if (!resposta) {
-      console.error('IA respondeu sem texto:', response.data);
-      return 'Não consegui gerar resposta agora.';
+    if (!conteudo) {
+      return { acao: 'responder', mensagem: 'Não consegui responder agora.' };
     }
 
-    return resposta;
+    // ⚠️ GARANTE JSON
+    try {
+      return JSON.parse(conteudo);
+    } catch (e) {
+      console.error('❌ IA não retornou JSON:', conteudo);
+      return {
+        acao: 'responder',
+        mensagem: 'Erro ao interpretar resposta. Tente novamente.'
+      };
+    }
 
   } catch (err) {
     console.error(
-      '❌ ERRO REAL IA:',
+      '❌ ERRO IA:',
       err.response?.data || err.message
     );
-    return 'Erro interno no atendimento automático.';
+
+    return {
+      acao: 'responder',
+      mensagem: 'Erro interno no atendimento automático.'
+    };
   }
 }
 
