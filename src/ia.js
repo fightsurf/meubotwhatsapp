@@ -1,7 +1,9 @@
 const axios = require('axios');
 const path = require('path');
 
-const PROMPT_BASE = require(path.join(__dirname, 'prompt.js'));
+const PROMPT_BASE = String(
+  require(path.join(__dirname, 'prompt.js'))
+);
 
 async function responderComIA(texto) {
   try {
