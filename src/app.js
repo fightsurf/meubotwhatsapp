@@ -7,12 +7,16 @@ const { responderComIA } = require(path.join(__dirname, 'ia.js'));
 const app = express();
 app.use(express.json());
 
-console.log('🚀 Bot Alumínio JR iniciado (IA-FIRST PURO)');
+console.log('🚀 Bot Alumínio JR iniciado (ESTADO CONTROLADO)');
 
 // ===== Z-API =====
 const INSTANCE_ID = process.env.INSTANCE_ID;
 const TOKEN_INSTANCIA = process.env.TOKEN_INSTANCIA;
 const CLIENT_TOKEN = process.env.CLIENT_TOKEN;
+
+// ===== CONTROLE DE ESTADO =====
+// INICIAL | ATENDIMENTO | HUMANO
+const estadoCliente = new Map();
 
 // ===== NORMALIZA TELEFONE =====
 function normalizarTelefone(phone) {
@@ -45,17 +49,38 @@ app.post('/webhook', async (req, res) => {
   const phone = normalizarTelefone(req.body.phone);
   const texto = req.body.text.message.trim();
 
-  console.log('📞 Phone:', phone);
-  console.log('📩 Texto:', texto);
+  // ===== ESTADO ATUAL =====
+  let estado = estadoCliente.get(phone);
 
+  // ===== PRIMEIRO CONTATO =====
+  if (!estado) {
+    estadoCliente.set(phone, 'INICIAL');
+
+    await enviarMensagem(
+      phone,
+      'Olá! Seja bem-vindo à Alumínio JR.\nComo posso te ajudar?'
+    );
+
+    return;
+  }
+
+  // ===== ATENDIMENTO HUMANO =====
+  if (estado === 'HUMANO') {
+    console.log('⛔ Atendimento humano ativo. Bot não responde.');
+    return;
+  }
+
+  // ===== TRANSIÇÃO INICIAL → ATENDIMENTO =====
+  if (estado === 'INICIAL') {
+    estadoCliente.set(phone, 'ATENDIMENTO');
+  }
+
+  // ===== ATENDIMENTO (IA ESCREVE, MAS NÃO DECIDE) =====
   try {
-    // 🔥 IA É A ÚNICA FONTE DE RESPOSTA
     const respostaIA = await responderComIA(texto);
-
     await enviarMensagem(phone, respostaIA);
-
   } catch (err) {
-    console.error('❌ ERRO GERAL:', err.message);
+    console.error('❌ ERRO IA:', err.message);
   }
 });
 
