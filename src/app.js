@@ -7,14 +7,14 @@ const { responderComIA } = require(path.join(__dirname, 'ia.js'));
 const app = express();
 app.use(express.json());
 
-console.log('🚀 Bot Alumínio JR iniciado (ESTADO CONTROLADO + TRAVA POR NÚMERO)');
+console.log('🚀 Bot Alumínio JR iniciado');
 
 // ===== Z-API =====
 const INSTANCE_ID = process.env.INSTANCE_ID;
 const TOKEN_INSTANCIA = process.env.TOKEN_INSTANCIA;
 const CLIENT_TOKEN = process.env.CLIENT_TOKEN;
 
-// 🔒 SEU NÚMERO (ÚNICO AUTORIZADO)
+// 🔒 NÚMERO AUTORIZADO (remova depois, se quiser liberar)
 const NUMERO_AUTORIZADO = '558398099164';
 
 // ===== CONTROLE DE ESTADO =====
@@ -55,7 +55,7 @@ app.post('/webhook', async (req, res) => {
   console.log('📞 Phone:', phone);
   console.log('📩 Texto:', texto);
 
-  // 🔒 TRAVA TOTAL — SÓ VOCÊ
+  // 🔒 TRAVA POR NÚMERO (TEMPORÁRIA)
   if (phone !== NUMERO_AUTORIZADO) {
     console.log('⛔ Número não autorizado. Ignorado.');
     return;
@@ -66,11 +66,11 @@ app.post('/webhook', async (req, res) => {
 
   // ===== PRIMEIRO CONTATO =====
   if (!estado) {
-    estadoCliente.set(phone, 'INICIAL');
+    estadoCliente.set(phone, 'ATENDIMENTO');
 
     await enviarMensagem(
       phone,
-      'Olá! Seja bem-vindo à Alumínio JR.\nComo posso te ajudar?'
+      'Você está falando com a Alumínio JR.\nMeu nome é George. Em que posso te ajudar?'
     );
 
     return;
@@ -82,17 +82,16 @@ app.post('/webhook', async (req, res) => {
     return;
   }
 
-  // ===== TRANSIÇÃO INICIAL → ATENDIMENTO =====
-  if (estado === 'INICIAL') {
-    estadoCliente.set(phone, 'ATENDIMENTO');
-  }
-
-  // ===== ATENDIMENTO (IA ESCREVE) =====
+  // ===== ATENDIMENTO COMERCIAL (IA) =====
   try {
     const respostaIA = await responderComIA(texto);
     await enviarMensagem(phone, respostaIA);
   } catch (err) {
     console.error('❌ ERRO IA:', err.message);
+    await enviarMensagem(
+      phone,
+      'Posso te ajudar com produtos, preços ou o catálogo da Alumínio JR.'
+    );
   }
 });
 
