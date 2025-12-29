@@ -1,7 +1,5 @@
 const axios = require('axios');
-const path = require('path');
-
-const PROMPT_BASE = require(path.join(__dirname, 'prompt.js'));
+const PROMPT_BASE = require('./prompt');
 
 async function responderComIA(texto) {
   try {
@@ -19,8 +17,7 @@ async function responderComIA(texto) {
             content: texto
           }
         ],
-        temperature: 0,
-        max_tokens: 150
+        temperature: 0
       },
       {
         headers: {
@@ -30,16 +27,11 @@ async function responderComIA(texto) {
       }
     );
 
-    const resposta = response.data.choices?.[0]?.message?.content;
-
-    return resposta || 'Posso te ajudar com produtos, preços ou catálogo.';
+    return response.data.choices[0].message.content;
 
   } catch (err) {
-    console.error(
-      '❌ ERRO IA:',
-      err.response?.data || err.message
-    );
-    return 'Posso te ajudar com produtos, preços ou catálogo.';
+    console.error('❌ ERRO IA:', err.response?.data || err.message);
+    return 'Erro no atendimento automático.';
   }
 }
 
