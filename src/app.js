@@ -7,12 +7,15 @@ const { responderComIA } = require(path.join(__dirname, 'ia.js'));
 const app = express();
 app.use(express.json());
 
-console.log('🚀 Bot Alumínio JR iniciado (ESTADO CONTROLADO)');
+console.log('🚀 Bot Alumínio JR iniciado (ESTADO CONTROLADO + TRAVA POR NÚMERO)');
 
 // ===== Z-API =====
 const INSTANCE_ID = process.env.INSTANCE_ID;
 const TOKEN_INSTANCIA = process.env.TOKEN_INSTANCIA;
 const CLIENT_TOKEN = process.env.CLIENT_TOKEN;
+
+// 🔒 SEU NÚMERO (ÚNICO AUTORIZADO)
+const NUMERO_AUTORIZADO = '558398099164';
 
 // ===== CONTROLE DE ESTADO =====
 // INICIAL | ATENDIMENTO | HUMANO
@@ -49,6 +52,15 @@ app.post('/webhook', async (req, res) => {
   const phone = normalizarTelefone(req.body.phone);
   const texto = req.body.text.message.trim();
 
+  console.log('📞 Phone:', phone);
+  console.log('📩 Texto:', texto);
+
+  // 🔒 TRAVA TOTAL — SÓ VOCÊ
+  if (phone !== NUMERO_AUTORIZADO) {
+    console.log('⛔ Número não autorizado. Ignorado.');
+    return;
+  }
+
   // ===== ESTADO ATUAL =====
   let estado = estadoCliente.get(phone);
 
@@ -75,7 +87,7 @@ app.post('/webhook', async (req, res) => {
     estadoCliente.set(phone, 'ATENDIMENTO');
   }
 
-  // ===== ATENDIMENTO (IA ESCREVE, MAS NÃO DECIDE) =====
+  // ===== ATENDIMENTO (IA ESCREVE) =====
   try {
     const respostaIA = await responderComIA(texto);
     await enviarMensagem(phone, respostaIA);
