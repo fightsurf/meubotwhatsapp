@@ -38,18 +38,20 @@ app.post('/webhook', async (req, res) => {
   try {
     const { texto: respostaIA, produtosDaAPI } = await responderComIA(textoOriginal, historico);
 
-    // Envia o texto da IA (seja preço, link de orçamento ou catálogo)
+    // Envia a resposta de texto (Preços, Links ou Saudação)
     await enviarMensagem(phone, respostaIA);
 
-    // Identifica se a resposta cita produtos para enviar as fotos logo abaixo
-    const produtosEncontrados = produtosDaAPI.filter(p => 
-      respostaIA.toUpperCase().includes(p.nome.toUpperCase())
-    );
+    // BUSCA DE FOTOS MELHORADA:
+    // Comparamos o texto da IA com os nomes da API de forma mais flexível
+    const produtosParaEnviar = produtosDaAPI.filter(p => {
+      const nomeLimpo = p.nome.toUpperCase().trim();
+      return respostaIA.toUpperCase().includes(nomeLimpo);
+    });
 
-    if (produtosEncontrados.length > 0) {
-      for (const prod of produtosEncontrados) {
-        const legendaIndividual = `${prod.nome}\nPreço: R$ ${prod.preco.toFixed(2)}`;
-        await enviarFoto(phone, prod.foto, legendaIndividual);
+    if (produtosParaEnviar.length > 0) {
+      for (const prod of produtosParaEnviar) {
+        const legenda = `${prod.nome}\nPreço: R$ ${prod.preco.toFixed(2)}`;
+        await enviarFoto(phone, prod.foto, legenda);
       }
     }
 
@@ -60,4 +62,4 @@ app.post('/webhook', async (req, res) => {
 });
 
 const PORT = process.env.PORT || 10000;
-app.listen(PORT, () => console.log(`🟢 George Online - Correção de Preços e Orçamento`));
+app.listen(PORT, () => console.log(`🟢 George Online - Busca de Fotos Corrigida`));
