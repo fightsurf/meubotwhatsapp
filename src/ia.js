@@ -16,40 +16,44 @@ const RESPOSTA_FALTA_INFO =
 // 👉 LINK DO CATÁLOGO (CONTROLADO PELO BACKEND)
 const LINK_CATALOGO = 'https://SEU_LINK_DE_CATALOGO_AQUI';
 
-// 👉 DADOS DO CATÁLOGO (INJETADOS PELO SISTEMA)
-// Pode começar vazio e evoluir depois
-const CATALOGO_DADOS = `
-- Panela de Pressão 3L
-- Panela de Pressão 4,5L
-- Caçarola Alumínio 20
-- Caçarola Alumínio 24
-- Cafeteira Alumínio 1L
-`;
+// 👉 DADOS DO CATÁLOGO (TEMPORÁRIO)
+const CATALOGO_DADOS = [
+  'Panela de Pressão 3L',
+  'Panela de Pressão 4,5L',
+  'Caçarola Alumínio 20',
+  'Caçarola Alumínio 24',
+  'Cafeteira Alumínio 1L'
+];
 
 async function responderComIA(textoCliente) {
   try {
     const promptFinal = PROMPT_BASE
       .replace('{{LINK_CATALOGO}}', LINK_CATALOGO)
-      .replace('{{CATALOGO_DADOS}}', CATALOGO_DADOS);
+      .replace('{{CATALOGO_DADOS}}', CATALOGO_DADOS.join(', '));
 
-    const completion = await client.chat.completions.create({
-      model: 'gpt-4o-mini',
+    const response = await client.responses.create({
+      model: 'gpt-4.1-mini',
+      input: [
+        {
+          role: 'system',
+          content: promptFinal
+        },
+        {
+          role: 'user',
+          content: textoCliente
+        }
+      ],
       temperature: 0,
-      max_tokens: 120,
-      messages: [
-        { role: 'system', content: promptFinal },
-        { role: 'user', content: textoCliente }
-      ]
+      max_output_tokens: 120
     });
 
-    const resposta = completion.choices[0]?.message?.content?.trim();
+    const resposta = response.output_text;
 
-    // 🔒 TRAVA FINAL — NUNCA RESPONDER VAZIO OU FORA DO PADRÃO
     if (!resposta) {
       return RESPOSTA_PADRAO_FORA_ESCOPO;
     }
 
-    return resposta;
+    return resposta.trim();
 
   } catch (err) {
     console.error('❌ ERRO OPENAI:', err.message);
