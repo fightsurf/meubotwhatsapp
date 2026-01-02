@@ -39,17 +39,22 @@ app.post('/webhook', async (req, res) => {
     const { texto: respostaIA, produtosDaAPI } = await responderComIA(textoOriginal, historico);
     await enviarMensagem(phone, respostaIA);
 
+    // Identificadores de estado
     const ehConsulta = respostaIA.includes("Veja abaixo as opções que encontrei");
-    const ehBoasVindasPedido = respostaIA.includes("Monte seu pedido aqui");
-    const ehDuvidaAdicao = respostaIA.includes("acrescentar ao seu pedido");
     const ehPedidoConfirmado = respostaIA.toUpperCase().includes("RESUMO") || respostaIA.toUpperCase().includes("TOTAL");
+    const ehBoasVindasPedido = respostaIA.includes("Monte seu pedido aqui");
 
-    if (!ehBoasVindasPedido && !ehDuvidaAdicao && (ehConsulta || ehPedidoConfirmado)) {
-      const termoBusca = textoOriginal.toUpperCase();
-      
+    // REGRA UNIFORME: Envia fotos se for consulta ou resumo de pedido
+    if (ehConsulta || ehPedidoConfirmado) {
+      // Se for consulta, filtramos por palavras-chave do que o usuário escreveu
+      // Se for resumo, filtramos pelo que a IA listou
       const produtosEncontrados = produtosDaAPI.filter(p => {
         const nomeProd = p.nome.toUpperCase();
-        if (ehConsulta) return nomeProd.includes(termoBusca.split(' ').pop()); 
+        if (ehConsulta) {
+            const palavrasBusca = textoOriginal.toUpperCase().split(' ');
+            // Busca por termos relevantes (ex: "cafeteira", "panela")
+            return palavrasBusca.some(palavra => palavra.length > 3 && nomeProd.includes(palavra));
+        }
         return respostaIA.toUpperCase().includes(nomeProd);
       });
 
@@ -69,8 +74,9 @@ app.post('/webhook', async (req, res) => {
         }
 
         if (ehConsulta) {
+          // Link do catálogo após as fotos
           await enviarMensagem(phone, "\nVeja nossa linha completa no catálogo: https://catalogo-aluminio-jr.onrender.com/");
-        } else if (ehPedidoConfirmado) {
+        } else {
           await enviarMensagem(phone, "Deseja adicionar mais algum item ou finalizar o pedido?");
         }
       }
@@ -83,4 +89,4 @@ app.post('/webhook', async (req, res) => {
 });
 
 const PORT = process.env.PORT || 10000;
-app.listen(PORT, () => console.log(`🟢 George Online - Fluxo de Pedido Simplificado`));
+app.listen(PORT, () => console.log(`🟢 George Online - Pesquisa Uniformizada`));
