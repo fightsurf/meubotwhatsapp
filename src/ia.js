@@ -25,29 +25,36 @@ const CATALOGO_DADOS = [
   'Cafeteira Alumínio 1L'
 ];
 
-async function responderComIA(textoCliente) {
+/**
+ * Função para gerar resposta usando IA
+ * @param {string} textoCliente - A mensagem atual do usuário
+ * @param {Array} historico - Array de mensagens anteriores vindo do app.js
+ */
+async function responderComIA(textoCliente, historico = []) {
   try {
     const promptFinal = PROMPT_BASE
       .replace('{{LINK_CATALOGO}}', LINK_CATALOGO)
       .replace('{{CATALOGO_DADOS}}', CATALOGO_DADOS.join(', '));
 
-    const response = await client.responses.create({
-      model: 'gpt-4.1-mini',
-      input: [
+    // Montagem do Chat Completion padrão OpenAI
+    const response = await client.chat.completions.create({
+      model: 'gpt-4o-mini', // Nome correto do modelo (mini e econômico)
+      messages: [
         {
           role: 'system',
           content: promptFinal
         },
+        ...historico, // Insere as mensagens anteriores para contexto
         {
           role: 'user',
           content: textoCliente
         }
       ],
       temperature: 0,
-      max_output_tokens: 120
+      max_tokens: 150 // Nome correto do parâmetro de limite de saída
     });
 
-    const resposta = response.output_text;
+    const resposta = response.choices[0]?.message?.content;
 
     if (!resposta) {
       return RESPOSTA_PADRAO_FORA_ESCOPO;
