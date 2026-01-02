@@ -31,12 +31,13 @@ app.post('/webhook', async (req, res) => {
   try {
     let { texto: respostaIA, produtosDaAPI } = await responderComIA(textoOriginal, historico);
 
-    // FORÇAR QUEBRA DE LINHA NA SAUDAÇÃO
+    // SOLUÇÃO DEFINITIVA: Se for saudação, quebra em duas mensagens separadas
     if (respostaIA.includes("Você está falando com a Alumínio JR.")) {
-      respostaIA = "Você está falando com a Alumínio JR. Em que posso ajudar?\n\nMonte seu pedido aqui: https://catalogo-aluminio-jr.onrender.com/orcamento";
+      await enviarMensagem(phone, "Você está falando com a Alumínio JR. Em que posso ajudar?");
+      await enviarMensagem(phone, "Monte seu pedido aqui: https://catalogo-aluminio-jr.onrender.com/orcamento");
+    } else {
+      await enviarMensagem(phone, respostaIA);
     }
-
-    await enviarMensagem(phone, respostaIA);
 
     historico.push({ role: 'user', content: textoOriginal }, { role: 'assistant', content: respostaIA });
     memoriaMensagens.set(phone, historico.slice(-10));
@@ -45,4 +46,4 @@ app.post('/webhook', async (req, res) => {
 });
 
 const PORT = process.env.PORT || 10000;
-app.listen(PORT, () => console.log(`🟢 George Online - Saudação Forçada`));
+app.listen(PORT, () => console.log(`🟢 George Online - Mensagens Separadas`));
