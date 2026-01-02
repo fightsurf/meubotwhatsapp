@@ -38,21 +38,27 @@ app.post('/webhook', async (req, res) => {
   try {
     const { texto: respostaIA, produtosDaAPI } = await responderComIA(textoOriginal, historico);
 
+    // 1. Envia a resposta principal (Saudação ou Resumo do Carrinho)
     await enviarMensagem(phone, respostaIA);
 
     const produtosEncontrados = produtosDaAPI.filter(p => 
       respostaIA.toUpperCase().includes(p.nome.toUpperCase().trim())
     );
 
+    // 2. Se houver produtos citados, envia as fotos primeiro
     if (produtosEncontrados.length > 0) {
       for (const prod of produtosEncontrados) {
         const legenda = `${prod.nome}\nPreço: R$ ${prod.preco.toFixed(2)}`;
         await enviarFoto(phone, prod.foto, legenda);
       }
+      
+      // 3. ENVIAR APÓS AS FOTOS: A pergunta de fechamento
+      // Isso garante que ela seja a última mensagem do bloco.
+      await enviarMensagem(phone, "Deseja adicionar mais algum item ou finalizar o pedido?");
     }
 
     historico.push({ role: 'user', content: textoOriginal }, { role: 'assistant', content: respostaIA });
-    memoriaMensagens.set(phone, historico.slice(-15)); // Memória maior para o carrinho
+    memoriaMensagens.set(phone, historico.slice(-15)); 
 
   } catch (err) { console.error('❌ Erro Webhook:', err.message); }
 });
