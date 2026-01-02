@@ -38,25 +38,34 @@ app.post('/webhook', async (req, res) => {
   try {
     const { texto: respostaIA, produtosDaAPI } = await responderComIA(textoOriginal, historico);
 
-    // 1. Envia a resposta principal da IA (Sem a pergunta duplicada)
     await enviarMensagem(phone, respostaIA);
 
     const produtosEncontrados = produtosDaAPI.filter(p => 
       respostaIA.toUpperCase().includes(p.nome.toUpperCase().trim())
     );
 
-    // 2. Se houver produtos citados, envia as fotos
     if (produtosEncontrados.length > 0) {
+      const ehPedido = respostaIA.toUpperCase().includes("RESUMO") || respostaIA.toUpperCase().includes("TOTAL");
+
       for (const prod of produtosEncontrados) {
-        const legenda = `${prod.nome}\nPreço: R$ ${prod.preco.toFixed(2)}`;
+        // Legenda padrão para consulta
+        let legenda = `${prod.nome}\nPreço: R$ ${prod.preco.toFixed(2)}`;
+
+        // Se for pedido, busca o cálculo detalhado na resposta da IA
+        if (ehPedido) {
+          const linhas = respostaIA.split('\n');
+          const linhaProd = linhas.find(l => l.toUpperCase().includes(prod.nome.toUpperCase().trim()));
+          if (linhaProd) {
+            // Pega tudo após o ":" do resumo (ex: R$ 50.00 x 15 = R$ 750.00)
+            const detalhes = linhaProd.split(': ')[1];
+            if (detalhes) legenda = `${prod.nome}\n${detalhes}`;
+          }
+        }
+
         await enviarFoto(phone, prod.foto, legenda);
       }
       
-      // 3. TRAVA DE FECHAMENTO: Envia a pergunta apenas após as fotos e apenas se for Pedido
-      const ehPedido = respostaIA.toUpperCase().includes("RESUMO") || respostaIA.toUpperCase().includes("TOTAL");
-      
       if (ehPedido) {
-        // Delay opcional de 1s pode ser útil aqui para garantir a ordem visual no WhatsApp
         await enviarMensagem(phone, "Deseja adicionar mais algum item ou finalizar o pedido?");
       }
     }
@@ -68,4 +77,4 @@ app.post('/webhook', async (req, res) => {
 });
 
 const PORT = process.env.PORT || 10000;
-app.listen(PORT, () => console.log(`🟢 George Online - Fluxo Corrigido`));
+app.listen(PORT, () => console.log(`🟢 George Online - Legendas Inteligentes Ativas`));
