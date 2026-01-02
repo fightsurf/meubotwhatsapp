@@ -9,30 +9,21 @@ app.use(express.json());
 
 const { INSTANCE_ID, TOKEN_INSTANCIA, CLIENT_TOKEN } = process.env;
 const NUMERO_AUTORIZADO = '558398099164';
-
 const memoriaMensagens = new Map();
-
-// --- FUNÇÕES DE ENVIO Z-API ---
 
 async function enviarMensagem(phone, message) {
   try {
     await axios.post(`https://api.z-api.io/instances/${INSTANCE_ID}/token/${TOKEN_INSTANCIA}/send-text`, 
-      { phone, message }, 
-      { headers: { 'Client-Token': CLIENT_TOKEN } }
-    );
+      { phone, message }, { headers: { 'Client-Token': CLIENT_TOKEN } });
   } catch (err) { console.error('❌ Erro Texto:', err.message); }
 }
 
 async function enviarFoto(phone, image, caption) {
   try {
     await axios.post(`https://api.z-api.io/instances/${INSTANCE_ID}/token/${TOKEN_INSTANCIA}/send-image`, 
-      { phone, image, caption }, 
-      { headers: { 'Client-Token': CLIENT_TOKEN } }
-    );
+      { phone, image, caption }, { headers: { 'Client-Token': CLIENT_TOKEN } });
   } catch (err) { console.error('❌ Erro Imagem:', err.message); }
 }
-
-// --- WEBHOOK ---
 
 app.post('/webhook', async (req, res) => {
   res.sendStatus(200);
@@ -47,27 +38,21 @@ app.post('/webhook', async (req, res) => {
   try {
     const { texto: respostaIA, produtosDaAPI } = await responderComIA(textoOriginal, historico);
 
-    // LÓGICA DE FOTO: O George menciona o produto na resposta?
-    // Procuramos o produto cujo nome está contido na resposta da IA
+    // Busca produto para enviar foto
     const produtoMencionado = produtosDaAPI.find(p => 
       respostaIA.toUpperCase().includes(p.nome.toUpperCase())
     );
 
     if (produtoMencionado && produtoMencionado.foto) {
-      // ✅ Usa .foto conforme o padrão da sua API
       await enviarFoto(phone, produtoMencionado.foto, respostaIA);
     } else {
       await enviarMensagem(phone, respostaIA);
     }
 
-    // Atualiza Memória (limite de 6 mensagens)
     historico.push({ role: 'user', content: textoOriginal }, { role: 'assistant', content: respostaIA });
-    memoriaMensagens.set(phone, historico.slice(-6));
+    memoriaMensagens.set(phone, historico.slice(-4)); // Histórico menor para maior objetividade
 
-  } catch (err) {
-    console.error('❌ Erro Processamento Webhook:', err.message);
-  }
+  } catch (err) { console.error('❌ Erro:', err.message); }
 });
 
-const PORT = process.env.PORT || 10000;
-app.listen(PORT, () => console.log(`🟢 George Online na porta ${PORT}`));
+app.listen(process.env.PORT || 10000);
