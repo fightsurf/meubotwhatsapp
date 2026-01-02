@@ -1,73 +1,60 @@
 const OpenAI = require('openai');
+const axios = require('axios'); // Necessário para buscar a API
 const PROMPT_BASE = require('./prompt');
 
 const client = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY
 });
 
-// 👉 TEXTO DE SEGURANÇA (fallback absoluto)
-const RESPOSTA_PADRAO_FORA_ESCOPO =
-  'Posso te ajudar com produtos, preços ou o catálogo da Alumínio JR.';
-
-// 👉 FRASE PARA FALTA DE DADOS
-const RESPOSTA_FALTA_INFO =
-  'Me diga o nome exato do produto e o tamanho ou litragem.';
-
-// 👉 LINK DO CATÁLOGO (CONTROLADO PELO BACKEND)
-const LINK_CATALOGO = 'https://SEU_LINK_DE_CATALOGO_AQUI';
-
-// 👉 DADOS DO CATÁLOGO (TEMPORÁRIO)
-const CATALOGO_DADOS = [
-  'Panela de Pressão 3L',
-  'Panela de Pressão 4,5L',
-  'Caçarola Alumínio 20',
-  'Caçarola Alumínio 24',
-  'Cafeteira Alumínio 1L'
-];
+const RESPOSTA_PADRAO_FORA_ESCOPO = 'Posso te ajudar com produtos, preços ou o catálogo da Alumínio JR.';
+const LINK_CATALOGO_SITE = 'https://catalogo-aluminio-jr.onrender.com';
+const API_URL = 'https://catalogo-aluminio-jr.onrender.com/api/produtos';
 
 /**
- * Função para gerar resposta usando IA
- * @param {string} textoCliente - A mensagem atual do usuário
- * @param {Array} historico - Array de mensagens anteriores vindo do app.js
+ * Busca os produtos diretamente da API do catálogo
  */
+async function buscarProdutosDaAPI() {
+  try {
+    const response = await axios.get(API_URL);
+    const produtos = response.data;
+
+    // Transforma o JSON da API em uma lista de texto para a IA entender
+    return produtos.map(p => `- ${p.nome}: R$ ${p.preco}`).join('\n');
+  } catch (err) {
+    console.error('❌ Erro ao buscar API de produtos:', err.message);
+    return 'Erro ao carregar preços. Por favor, consulte o catálogo.';
+  }
+}
+
 async function responderComIA(textoCliente, historico = []) {
   try {
-    const promptFinal = PROMPT_BASE
-      .replace('{{LINK_CATALOGO}}', LINK_CATALOGO)
-      .replace('{{CATALOGO_DADOS}}', CATALOGO_DADOS.join(', '));
+    // 1. Busca os dados atualizados da API antes de responder
+    const catalogoAtualizado = await buscarProdutosDaAPI();
 
-    // Montagem do Chat Completion padrão OpenAI
+    // 2. Injeta os dados dinâmicos no Prompt
+    const promptFinal = PROMPT_BASE
+      .replace('{{LINK_CATALOGO}}', LINK_CATALOGO_SITE)
+      .replace('{{CATALOGO_DADOS}}', catalogoAtualizado);
+
+    // 3. Chamada para a OpenAI
     const response = await client.chat.completions.create({
-      model: 'gpt-4o-mini', // Nome correto do modelo (mini e econômico)
+      model: 'gpt-4o-mini',
       messages: [
-        {
-          role: 'system',
-          content: promptFinal
-        },
-        ...historico, // Insere as mensagens anteriores para contexto
-        {
-          role: 'user',
-          content: textoCliente
-        }
+        { role: 'system', content: promptFinal },
+        ...historico,
+        { role: 'user', content: textoCliente }
       ],
       temperature: 0,
-      max_tokens: 150 // Nome correto do parâmetro de limite de saída
+      max_tokens: 150
     });
 
     const resposta = response.choices[0]?.message?.content;
-
-    if (!resposta) {
-      return RESPOSTA_PADRAO_FORA_ESCOPO;
-    }
-
-    return resposta.trim();
+    return resposta ? resposta.trim() : RESPOSTA_PADRAO_FORA_ESCOPO;
 
   } catch (err) {
-    console.error('❌ ERRO OPENAI:', err.message);
+    console.error('❌ ERRO NO ia.js:', err.message);
     return RESPOSTA_PADRAO_FORA_ESCOPO;
   }
 }
 
-module.exports = {
-  responderComIA
-};
+module.exports = { responderComIA };
