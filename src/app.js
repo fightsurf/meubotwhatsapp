@@ -1,59 +1,43 @@
-require('dotenv').config();
-const express = require('express');
+const OpenAI = require('openai');
 const axios = require('axios');
-const path = require('path');
-const { responderComIA } = require(path.join(__dirname, 'ia.js'));
+const PROMPT_BASE = require('./prompt');
 
-const app = express();
-app.use(express.json());
+const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+const API_URL = 'https://catalogo-aluminio-jr.onrender.com/api/produtos';
+const LINK_CATALOGO_SITE = 'https://catalogo-aluminio-jr.onrender.com/';
 
-const { INSTANCE_ID, TOKEN_INSTANCIA, CLIENT_TOKEN } = process.env;
-const NUMERO_AUTORIZADO = '558398099164';
-const memoriaMensagens = new Map();
-
-async function enviarMensagem(phone, message) {
+async function responderComIA(textoCliente, historico = []) {
   try {
-    await axios.post(`https://api.z-api.io/instances/${INSTANCE_ID}/token/${TOKEN_INSTANCIA}/send-text`, 
-      { phone, message }, { headers: { 'Client-Token': CLIENT_TOKEN } });
-  } catch (err) { console.error('❌ Erro Texto:', err.message); }
+    const responseAPI = await axios.get(API_URL);
+    const produtosRaw = responseAPI.data;
+
+    // Formatação em blocos para a IA ler melhor cada item
+    const catalogoTexto = produtosRaw
+      .map(p => `ITEM: ${p.nome} | PRECO: R$ ${p.preco.toFixed(2)}`)
+      .join('\n');
+
+    const promptFinal = PROMPT_BASE
+      .replace(/{{LINK_CATALOGO}}/g, LINK_CATALOGO_SITE)
+      .replace(/{{CATALOGO_DADOS}}/g, catalogoTexto);
+
+    const response = await client.chat.completions.create({
+      model: 'gpt-4o-mini',
+      messages: [
+        { role: 'system', content: promptFinal },
+        ...historico,
+        { role: 'user', content: textoCliente }
+      ],
+      temperature: 0
+    });
+
+    return {
+      texto: response.choices[0].message.content,
+      produtosDaAPI: produtosRaw
+    };
+  } catch (err) {
+    console.error('❌ Erro ia.js:', err.message);
+    return { texto: "Não tenho essa informação agora.", produtosDaAPI: [] };
+  }
 }
 
-async function enviarFoto(phone, image, caption) {
-  try {
-    await axios.post(`https://api.z-api.io/instances/${INSTANCE_ID}/token/${TOKEN_INSTANCIA}/send-image`, 
-      { phone, image, caption }, { headers: { 'Client-Token': CLIENT_TOKEN } });
-  } catch (err) { console.error('❌ Erro Imagem:', err.message); }
-}
-
-app.post('/webhook', async (req, res) => {
-  res.sendStatus(200);
-  if (req.body.fromMe || req.body.isGroup) return;
-
-  const phone = req.body.phone.replace(/\D/g, '');
-  const textoOriginal = req.body.text?.message;
-  if (phone !== NUMERO_AUTORIZADO || !textoOriginal) return;
-
-  let historico = memoriaMensagens.get(phone) || [];
-  
-  try {
-    const { texto: respostaIA, produtosDaAPI } = await responderComIA(textoOriginal, historico);
-
-    // Lógica para achar a foto baseada no nome que a IA escreveu
-    const produtoMencionado = produtosDaAPI.find(p => 
-      respostaIA.toUpperCase().includes(p.nome.toUpperCase())
-    );
-
-    if (produtoMencionado && produtoMencionado.foto) {
-      await enviarFoto(phone, produtoMencionado.foto, respostaIA);
-    } else {
-      await enviarMensagem(phone, respostaIA);
-    }
-
-    historico.push({ role: 'user', content: textoOriginal }, { role: 'assistant', content: respostaIA });
-    memoriaMensagens.set(phone, historico.slice(-4));
-
-  } catch (err) { console.error('❌ Erro Webhook:', err.message); }
-});
-
-const PORT = process.env.PORT || 10000;
-app.listen(PORT, () => console.log(`🟢 George Ativo na porta ${PORT}`));
+module.exports = { responderComIA };
