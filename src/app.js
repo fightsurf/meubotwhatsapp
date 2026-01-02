@@ -40,7 +40,6 @@ app.post('/webhook', async (req, res) => {
 
     await enviarMensagem(phone, respostaIA);
 
-    // Busca e envia fotos apenas se a IA citou produtos específicos no texto
     const produtosEncontrados = produtosDaAPI.filter(p => 
       respostaIA.toUpperCase().includes(p.nome.toUpperCase().trim())
     );
@@ -53,10 +52,10 @@ app.post('/webhook', async (req, res) => {
     }
 
     historico.push({ role: 'user', content: textoOriginal }, { role: 'assistant', content: respostaIA });
-    memoriaMensagens.set(phone, historico.slice(-6));
+    memoriaMensagens.set(phone, historico.slice(-15)); // Memória maior para o carrinho
 
   } catch (err) { console.error('❌ Erro Webhook:', err.message); }
 });
 
 const PORT = process.env.PORT || 10000;
-app.listen(PORT, () => console.log(`🟢 George Online - Saudação e Catálogo Alinhados`));
+app.listen(PORT, () => console.log(`🟢 George Online - Fluxo de Pedido Completo`));
