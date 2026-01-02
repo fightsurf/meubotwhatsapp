@@ -37,17 +37,15 @@ app.post('/webhook', async (req, res) => {
   
   try {
     const { texto: respostaIA, produtosDaAPI } = await responderComIA(textoOriginal, historico);
-
-    // 1. Envia a resposta da IA
     await enviarMensagem(phone, respostaIA);
 
-    // Identificação de estados
+    // Identificação refinada de estados
     const ehBoasVindas = respostaIA.includes("Monte seu pedido aqui");
-    const ehDuvidaAmbiguidade = respostaIA.includes("Qual delas você gostaria de acrescentar");
+    // Trava de fotos APENAS quando perguntar "Qual delas você gostaria de acrescentar" (Pedido)
+    const ehDuvidaDeAdicao = respostaIA.includes("acrescentar ao seu pedido"); 
     const ehPedidoConfirmado = respostaIA.toUpperCase().includes("RESUMO") || respostaIA.toUpperCase().includes("TOTAL");
 
-    // 2. Só envia mídias e perguntas extras se NÃO for Boas Vindas ou Dúvida de acréscimo
-    if (!ehBoasVindas && !ehDuvidaAmbiguidade) {
+    if (!ehBoasVindas && !ehDuvidaDeAdicao) {
       const produtosEncontrados = produtosDaAPI.filter(p => 
         respostaIA.toUpperCase().includes(p.nome.toUpperCase().trim())
       );
@@ -80,4 +78,4 @@ app.post('/webhook', async (req, res) => {
 });
 
 const PORT = process.env.PORT || 10000;
-app.listen(PORT, () => console.log(`🟢 George Online - Fluxo Corrigido`));
+app.listen(PORT, () => console.log(`🟢 George Online - Ajuste de Fotos em Consulta`));
