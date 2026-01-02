@@ -11,23 +11,24 @@ const { INSTANCE_ID, TOKEN_INSTANCIA, CLIENT_TOKEN } = process.env;
 const NUMERO_AUTORIZADO = '558398099164';
 
 const memoriaMensagens = new Map();
-const estadoCliente = new Map();
 
 // --- FUNÇÕES DE ENVIO Z-API ---
 
 async function enviarMensagem(phone, message) {
   try {
     await axios.post(`https://api.z-api.io/instances/${INSTANCE_ID}/token/${TOKEN_INSTANCIA}/send-text`, 
-    { phone, message }, 
-    { headers: { 'Client-Token': CLIENT_TOKEN } });
+      { phone, message }, 
+      { headers: { 'Client-Token': CLIENT_TOKEN } }
+    );
   } catch (err) { console.error('❌ Erro Texto:', err.message); }
 }
 
 async function enviarFoto(phone, image, caption) {
   try {
     await axios.post(`https://api.z-api.io/instances/${INSTANCE_ID}/token/${TOKEN_INSTANCIA}/send-image`, 
-    { phone, image, caption }, 
-    { headers: { 'Client-Token': CLIENT_TOKEN } });
+      { phone, image, caption }, 
+      { headers: { 'Client-Token': CLIENT_TOKEN } }
+    );
   } catch (err) { console.error('❌ Erro Imagem:', err.message); }
 }
 
@@ -38,34 +39,35 @@ app.post('/webhook', async (req, res) => {
   if (req.body.fromMe || req.body.isGroup) return;
 
   const phone = req.body.phone.replace(/\D/g, '');
-  const texto = req.body.text?.message;
-  if (phone !== NUMERO_AUTORIZADO || !texto) return;
+  const textoOriginal = req.body.text?.message;
+  if (phone !== NUMERO_AUTORIZADO || !textoOriginal) return;
 
   let historico = memoriaMensagens.get(phone) || [];
   
   try {
-    const { texto: respostaIA, produtosDaAPI } = await responderComIA(texto, historico);
+    const { texto: respostaIA, produtosDaAPI } = await responderComIA(textoOriginal, historico);
 
-    // LÓGICA DE FOTO: Verifica se o George mencionou um produto que existe na API
+    // LÓGICA DE FOTO: O George menciona o produto na resposta?
+    // Procuramos o produto cujo nome está contido na resposta da IA
     const produtoMencionado = produtosDaAPI.find(p => 
-      respostaIA.toLowerCase().includes(p.nome.toLowerCase())
+      respostaIA.toUpperCase().includes(p.nome.toUpperCase())
     );
 
-    if (produtoMencionado && produtoMencionado.imagem) {
-      // Envia a imagem com a resposta da IA como legenda
-      await enviarFoto(phone, produtoMencionado.imagem, respostaIA);
+    if (produtoMencionado && produtoMencionado.foto) {
+      // ✅ Usa .foto conforme o padrão da sua API
+      await enviarFoto(phone, produtoMencionado.foto, respostaIA);
     } else {
-      // Envia apenas o texto
       await enviarMensagem(phone, respostaIA);
     }
 
-    // Atualiza Memória
-    historico.push({ role: 'user', content: texto }, { role: 'assistant', content: respostaIA });
+    // Atualiza Memória (limite de 6 mensagens)
+    historico.push({ role: 'user', content: textoOriginal }, { role: 'assistant', content: respostaIA });
     memoriaMensagens.set(phone, historico.slice(-6));
 
   } catch (err) {
-    console.error('❌ Erro Processamento:', err.message);
+    console.error('❌ Erro Processamento Webhook:', err.message);
   }
 });
 
-app.listen(process.env.PORT || 10000, () => console.log('🟢 George Online com suporte a fotos'));
+const PORT = process.env.PORT || 10000;
+app.listen(PORT, () => console.log(`🟢 George Online na porta ${PORT}`));
