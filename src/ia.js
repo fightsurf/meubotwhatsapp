@@ -11,8 +11,9 @@ async function responderComIA(textoCliente, historico = []) {
     const responseAPI = await axios.get(API_URL);
     const produtosRaw = responseAPI.data;
 
+    // Criamos uma lista bem clara para a IA não se perder
     const catalogoTexto = produtosRaw
-      .map(p => `- ${p.nome}: R$ ${p.preco.toFixed(2)}`)
+      .map(p => `PRODUTO: ${p.nome} | PREÇO: R$ ${p.preco.toFixed(2)}`)
       .join('\n');
 
     const promptFinal = PROMPT_BASE
@@ -26,7 +27,7 @@ async function responderComIA(textoCliente, historico = []) {
         ...historico,
         { role: 'user', content: textoCliente }
       ],
-      temperature: 0
+      temperature: 0 // Mantém a precisão total
     });
 
     return {
@@ -34,8 +35,8 @@ async function responderComIA(textoCliente, historico = []) {
       produtosDaAPI: produtosRaw
     };
   } catch (err) {
-    console.error('❌ Erro no ia.js:', err.message);
-    return { texto: "Posso ajudar com produtos, preços ou catálogo.", produtosDaAPI: [] };
+    console.error('❌ Erro ia.js:', err.message);
+    return { texto: "Não tenho essa informação no momento.", produtosDaAPI: [] };
   }
 }
 
