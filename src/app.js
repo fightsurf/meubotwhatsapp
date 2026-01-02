@@ -39,13 +39,14 @@ app.post('/webhook', async (req, res) => {
     const { texto: respostaIA, produtosDaAPI } = await responderComIA(textoOriginal, historico);
     await enviarMensagem(phone, respostaIA);
 
-    // Identificação refinada de estados
-    const ehBoasVindas = respostaIA.includes("Monte seu pedido aqui");
-    // Trava de fotos APENAS quando perguntar "Qual delas você gostaria de acrescentar" (Pedido)
-    const ehDuvidaDeAdicao = respostaIA.includes("acrescentar ao seu pedido"); 
+    // Identificação de estados para evitar disparos errados de fotos
+    const ehLinkCatalogo = respostaIA.includes("Acesse nosso catálogo completo");
+    const ehBoasVindasPedido = respostaIA.includes("Monte seu pedido aqui");
+    const ehDuvidaAdicao = respostaIA.includes("acrescentar ao seu pedido");
     const ehPedidoConfirmado = respostaIA.toUpperCase().includes("RESUMO") || respostaIA.toUpperCase().includes("TOTAL");
 
-    if (!ehBoasVindas && !ehDuvidaDeAdicao) {
+    // Só envia fotos se NÃO for link de catálogo, boas-vindas ou dúvida de acréscimo
+    if (!ehLinkCatalogo && !ehBoasVindasPedido && !ehDuvidaAdicao) {
       const produtosEncontrados = produtosDaAPI.filter(p => 
         respostaIA.toUpperCase().includes(p.nome.toUpperCase().trim())
       );
@@ -78,4 +79,4 @@ app.post('/webhook', async (req, res) => {
 });
 
 const PORT = process.env.PORT || 10000;
-app.listen(PORT, () => console.log(`🟢 George Online - Ajuste de Fotos em Consulta`));
+app.listen(PORT, () => console.log(`🟢 George Online - Ajuste de Catálogo Curto`));
