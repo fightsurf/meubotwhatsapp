@@ -38,19 +38,21 @@ app.post('/webhook', async (req, res) => {
   try {
     const { texto: respostaIA, produtosDaAPI } = await responderComIA(textoOriginal, historico);
 
-    // 1. Sempre envia a resposta de texto da IA primeiro (onde está o link do catálogo)
-    await enviarMensagem(phone, respostaIA);
-
-    // 2. Identifica se há produtos para enviar fotos logo após o texto
+    // Identifica se a IA citou produtos da API na resposta
     const produtosEncontrados = produtosDaAPI.filter(p => 
       respostaIA.toUpperCase().includes(p.nome.toUpperCase())
     );
 
     if (produtosEncontrados.length > 0) {
+      // Se achou produtos: envia o texto da IA primeiro e depois as fotos separadas
+      await enviarMensagem(phone, respostaIA);
       for (const prod of produtosEncontrados) {
         const legendaIndividual = `${prod.nome}\nPreço: R$ ${prod.preco.toFixed(2)}`;
         await enviarFoto(phone, prod.foto, legendaIndividual);
       }
+    } else {
+      // Se não achou produtos (é só saudação ou link de catálogo): envia apenas o texto uma vez
+      await enviarMensagem(phone, respostaIA);
     }
 
     historico.push({ role: 'user', content: textoOriginal }, { role: 'assistant', content: respostaIA });
@@ -60,4 +62,4 @@ app.post('/webhook', async (req, res) => {
 });
 
 const PORT = process.env.PORT || 10000;
-app.listen(PORT, () => console.log(`🟢 George Ativo na porta ${PORT}`));
+app.listen(PORT, () => console.log(`🟢 George Ajustado - Sem duplicidade`));
