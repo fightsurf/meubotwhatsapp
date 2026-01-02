@@ -11,18 +11,21 @@ const LINK_CATALOGO_SITE = 'https://catalogo-aluminio-jr.onrender.com/';
 
 async function responderComIA(textoCliente, historico = []) {
   try {
-    // 1. Busca produtos na sua API
+    // 1. Busca os produtos reais na sua API
     const responseAPI = await axios.get(API_URL);
     const produtosRaw = responseAPI.data;
 
-    // 2. Prepara o catálogo em texto para a IA ler
-    const catalogoTexto = produtosRaw.map(p => `- ${p.nome}: R$ ${p.preco}`).join('\n');
+    // 2. Formata a lista de produtos para a IA conhecer nomes e preços
+    const catalogoTexto = produtosRaw
+      .map(p => `- ${p.nome}: R$ ${p.preco.toFixed(2)}`)
+      .join('\n');
 
+    // 3. Monta o prompt com os dados dinâmicos
     const promptFinal = PROMPT_BASE
       .replace(/{{LINK_CATALOGO}}/g, LINK_CATALOGO_SITE)
       .replace(/{{CATALOGO_DADOS}}/g, catalogoTexto);
 
-    // 3. Chamada OpenAI
+    // 4. Consulta a OpenAI
     const response = await client.chat.completions.create({
       model: 'gpt-4o-mini',
       messages: [
@@ -35,11 +38,14 @@ async function responderComIA(textoCliente, historico = []) {
 
     return {
       texto: response.choices[0].message.content,
-      produtosDaAPI: produtosRaw // Retorna a lista para o app.js procurar a imagem
+      produtosDaAPI: produtosRaw // Retorna o JSON para o app.js buscar a .foto
     };
   } catch (err) {
     console.error('❌ Erro no ia.js:', err.message);
-    return { texto: "Posso te ajudar com produtos, preços ou o catálogo.", produtosDaAPI: [] };
+    return { 
+      texto: "Posso te ajudar com produtos, preços ou o catálogo da Alumínio JR.", 
+      produtosDaAPI: [] 
+    };
   }
 }
 
