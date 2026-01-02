@@ -29,7 +29,7 @@ app.post('/webhook', async (req, res) => {
   res.sendStatus(200);
   if (req.body.fromMe || req.body.isGroup) return;
 
-  const phone = req.body.phone.replace(/\D/g, '');
+  const phone = phone.replace(/\D/g, '');
   const textoOriginal = req.body.text?.message;
   if (phone !== NUMERO_AUTORIZADO || !textoOriginal) return;
 
@@ -44,6 +44,7 @@ app.post('/webhook', async (req, res) => {
     const ehDuvidaAdicao = respostaIA.includes("acrescentar ao seu pedido");
     const ehPedidoConfirmado = respostaIA.toUpperCase().includes("RESUMO") || respostaIA.toUpperCase().includes("TOTAL");
 
+    // Lógica de envio de mídias preservada
     if (!ehLinkCatalogo && !ehBoasVindasPedido && !ehDuvidaAdicao) {
       const produtosEncontrados = produtosDaAPI.filter(p => 
         respostaIA.toUpperCase().includes(p.nome.toUpperCase().trim())
@@ -64,11 +65,10 @@ app.post('/webhook', async (req, res) => {
           await enviarFoto(phone, prod.foto, legenda);
         }
 
-        // Se for apenas CONSULTA (não é pedido), envia o link do catálogo ao final
+        // Envio do catálogo após consulta ou pergunta de fechamento após pedido
         if (!ehPedidoConfirmado) {
           await enviarMensagem(phone, "\nVeja nossa linha completa no catálogo: https://catalogo-aluminio-jr.onrender.com/");
         } else {
-          // Se for pedido, envia a pergunta de fechamento padrão
           await enviarMensagem(phone, "Deseja adicionar mais algum item ou finalizar o pedido?");
         }
       }
@@ -81,4 +81,4 @@ app.post('/webhook', async (req, res) => {
 });
 
 const PORT = process.env.PORT || 10000;
-app.listen(PORT, () => console.log(`🟢 George Online - Ajuste de Consulta e Catálogo Final`));
+app.listen(PORT, () => console.log(`🟢 George Online - Consulta Limpa Ativada`));
