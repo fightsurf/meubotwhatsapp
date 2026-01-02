@@ -38,20 +38,20 @@ app.post('/webhook', async (req, res) => {
   try {
     const { texto: respostaIA, produtosDaAPI } = await responderComIA(textoOriginal, historico);
 
-    // Identifica se a IA citou produtos da API na resposta
+    // Identifica se a resposta da IA contém nomes de produtos da API
     const produtosEncontrados = produtosDaAPI.filter(p => 
       respostaIA.toUpperCase().includes(p.nome.toUpperCase())
     );
 
+    // Se a IA citou produtos, envia o texto informativo e as fotos separadas
     if (produtosEncontrados.length > 0) {
-      // Se achou produtos: envia o texto da IA primeiro e depois as fotos separadas
       await enviarMensagem(phone, respostaIA);
       for (const prod of produtosEncontrados) {
         const legendaIndividual = `${prod.nome}\nPreço: R$ ${prod.preco.toFixed(2)}`;
         await enviarFoto(phone, prod.foto, legendaIndividual);
       }
     } else {
-      // Se não achou produtos (é só saudação ou link de catálogo): envia apenas o texto uma vez
+      // Para pedidos de orçamento, catálogo ou saudações, envia apenas o texto da IA
       await enviarMensagem(phone, respostaIA);
     }
 
@@ -62,4 +62,4 @@ app.post('/webhook', async (req, res) => {
 });
 
 const PORT = process.env.PORT || 10000;
-app.listen(PORT, () => console.log(`🟢 George Ajustado - Sem duplicidade`));
+app.listen(PORT, () => console.log(`🟢 George Online - Regra de Orçamento Ativa`));
