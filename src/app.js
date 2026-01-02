@@ -1,29 +1,4 @@
-require('dotenv').config();
-const express = require('express');
-const axios = require('axios');
-const path = require('path');
-const { responderComIA } = require(path.join(__dirname, 'ia.js'));
-
-const app = express();
-app.use(express.json());
-
-const { INSTANCE_ID, TOKEN_INSTANCIA, CLIENT_TOKEN } = process.env;
-const NUMERO_AUTORIZADO = '558398099164';
-const memoriaMensagens = new Map();
-
-async function enviarMensagem(phone, message) {
-  try {
-    await axios.post(`https://api.z-api.io/instances/${INSTANCE_ID}/token/${TOKEN_INSTANCIA}/send-text`, 
-      { phone, message }, { headers: { 'Client-Token': CLIENT_TOKEN } });
-  } catch (err) { console.error('❌ Erro Texto:', err.message); }
-}
-
-async function enviarFoto(phone, image, caption) {
-  try {
-    await axios.post(`https://api.z-api.io/instances/${INSTANCE_ID}/token/${TOKEN_INSTANCIA}/send-image`, 
-      { phone, image, caption }, { headers: { 'Client-Token': CLIENT_TOKEN } });
-  } catch (err) { console.error('❌ Erro Imagem:', err.message); }
-}
+// ... (funções enviarMensagem e enviarFoto permanecem iguais)
 
 app.post('/webhook', async (req, res) => {
   res.sendStatus(200);
@@ -37,36 +12,35 @@ app.post('/webhook', async (req, res) => {
   
   try {
     const { texto: respostaIA, produtosDaAPI } = await responderComIA(textoOriginal, historico);
-
     await enviarMensagem(phone, respostaIA);
 
-    const produtosEncontrados = produtosDaAPI.filter(p => 
-      respostaIA.toUpperCase().includes(p.nome.toUpperCase().trim())
-    );
+    // Só processa fotos e fechamento se não for uma pergunta de ambiguidade
+    const ehDuvida = respostaIA.includes("Qual delas você gostaria"); 
+    const ehPedido = respostaIA.toUpperCase().includes("RESUMO") || respostaIA.toUpperCase().includes("TOTAL");
 
-    if (produtosEncontrados.length > 0) {
-      const ehPedido = respostaIA.toUpperCase().includes("RESUMO") || respostaIA.toUpperCase().includes("TOTAL");
+    if (!ehDuvida) {
+      const produtosEncontrados = produtosDaAPI.filter(p => 
+        respostaIA.toUpperCase().includes(p.nome.toUpperCase().trim())
+      );
 
-      for (const prod of produtosEncontrados) {
-        // Legenda padrão para consulta
-        let legenda = `${prod.nome}\nPreço: R$ ${prod.preco.toFixed(2)}`;
-
-        // Se for pedido, busca o cálculo detalhado na resposta da IA
-        if (ehPedido) {
-          const linhas = respostaIA.split('\n');
-          const linhaProd = linhas.find(l => l.toUpperCase().includes(prod.nome.toUpperCase().trim()));
-          if (linhaProd) {
-            // Pega tudo após o ":" do resumo (ex: R$ 50.00 x 15 = R$ 750.00)
-            const detalhes = linhaProd.split(': ')[1];
-            if (detalhes) legenda = `${prod.nome}\n${detalhes}`;
+      if (produtosEncontrados.length > 0) {
+        for (const prod of produtosEncontrados) {
+          let legenda = `${prod.nome}\nPreço: R$ ${prod.preco.toFixed(2)}`;
+          
+          if (ehPedido) {
+            const linhas = respostaIA.split('\n');
+            const linhaProd = linhas.find(l => l.toUpperCase().includes(prod.nome.toUpperCase().trim()));
+            if (linhaProd) {
+              const detalhes = linhaProd.split(': ')[1];
+              if (detalhes) legenda = `${prod.nome}\n${detalhes}`;
+            }
           }
+          await enviarFoto(phone, prod.foto, legenda);
         }
 
-        await enviarFoto(phone, prod.foto, legenda);
-      }
-      
-      if (ehPedido) {
-        await enviarMensagem(phone, "Deseja adicionar mais algum item ou finalizar o pedido?");
+        if (ehPedido) {
+          await enviarMensagem(phone, "Deseja adicionar mais algum item ou finalizar o pedido?");
+        }
       }
     }
 
@@ -75,6 +49,3 @@ app.post('/webhook', async (req, res) => {
 
   } catch (err) { console.error('❌ Erro Webhook:', err.message); }
 });
-
-const PORT = process.env.PORT || 10000;
-app.listen(PORT, () => console.log(`🟢 George Online - Legendas Inteligentes Ativas`));
