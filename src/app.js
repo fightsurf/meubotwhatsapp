@@ -39,21 +39,17 @@ app.post('/webhook', async (req, res) => {
     const { texto: respostaIA, produtosDaAPI } = await responderComIA(textoOriginal, historico);
     await enviarMensagem(phone, respostaIA);
 
-    // Identificadores de estado
     const ehConsulta = respostaIA.includes("Veja abaixo as opções que encontrei");
     const ehPedidoConfirmado = respostaIA.toUpperCase().includes("RESUMO") || respostaIA.toUpperCase().includes("TOTAL");
-    const ehBoasVindasPedido = respostaIA.includes("Monte seu pedido aqui");
 
-    // REGRA UNIFORME: Envia fotos se for consulta ou resumo de pedido
+    // Agora enviamos fotos sempre que for uma consulta de preço, sem travas por ambiguidade
     if (ehConsulta || ehPedidoConfirmado) {
-      // Se for consulta, filtramos por palavras-chave do que o usuário escreveu
-      // Se for resumo, filtramos pelo que a IA listou
       const produtosEncontrados = produtosDaAPI.filter(p => {
         const nomeProd = p.nome.toUpperCase();
         if (ehConsulta) {
-            const palavrasBusca = textoOriginal.toUpperCase().split(' ');
-            // Busca por termos relevantes (ex: "cafeteira", "panela")
-            return palavrasBusca.some(palavra => palavra.length > 3 && nomeProd.includes(palavra));
+            const busca = textoOriginal.toUpperCase();
+            // Verifica se o nome do produto contém a palavra principal da busca (ex: "cafeteira")
+            return busca.split(' ').some(palavra => palavra.length > 3 && nomeProd.includes(palavra));
         }
         return respostaIA.toUpperCase().includes(nomeProd);
       });
@@ -74,7 +70,6 @@ app.post('/webhook', async (req, res) => {
         }
 
         if (ehConsulta) {
-          // Link do catálogo após as fotos
           await enviarMensagem(phone, "\nVeja nossa linha completa no catálogo: https://catalogo-aluminio-jr.onrender.com/");
         } else {
           await enviarMensagem(phone, "Deseja adicionar mais algum item ou finalizar o pedido?");
@@ -89,4 +84,4 @@ app.post('/webhook', async (req, res) => {
 });
 
 const PORT = process.env.PORT || 10000;
-app.listen(PORT, () => console.log(`🟢 George Online - Pesquisa Uniformizada`));
+app.listen(PORT, () => console.log(`🟢 George Online - Pesquisa de cafeteiras corrigida`));
