@@ -38,25 +38,24 @@ app.post('/webhook', async (req, res) => {
   try {
     const { texto: respostaIA, produtosDaAPI } = await responderComIA(textoOriginal, historico);
 
-    // 1. Envia a resposta da IA (Pode ser saudação, lista de opções ou resumo)
+    // 1. Envia a resposta da IA
     await enviarMensagem(phone, respostaIA);
 
-    // Identifica o contexto da resposta
-    const ehDuvidaAmbiguidade = respostaIA.includes("Qual delas você gostaria");
+    // Identifica se é uma dúvida de AMBIGUIDADE para ADICIONAR ao pedido
+    const ehDuvidaPedido = respostaIA.includes("Qual delas você gostaria de acrescentar");
     const ehPedidoConfirmado = respostaIA.toUpperCase().includes("RESUMO") || respostaIA.toUpperCase().includes("TOTAL");
 
-    // 2. Só processa mídias se NÃO for uma dúvida de ambiguidade
-    if (!ehDuvidaAmbiguidade) {
+    // 2. Só trava o envio de fotos se for dúvida de ADIÇÃO ao pedido. 
+    // Se for consulta (ehDuvidaPedido = false), ele envia as fotos normalmente.
+    if (!ehDuvidaPedido) {
       const produtosEncontrados = produtosDaAPI.filter(p => 
         respostaIA.toUpperCase().includes(p.nome.toUpperCase().trim())
       );
 
       if (produtosEncontrados.length > 0) {
         for (const prod of produtosEncontrados) {
-          // Legenda padrão para consulta: Nome + Preço
           let legenda = `${prod.nome}\nPreço: R$ ${prod.preco.toFixed(2)}`;
 
-          // Se for pedido, extrai a linha do cálculo para a legenda
           if (ehPedidoConfirmado) {
             const linhas = respostaIA.split('\n');
             const linhaDoProduto = linhas.find(l => l.toUpperCase().includes(prod.nome.toUpperCase().trim()));
@@ -68,7 +67,7 @@ app.post('/webhook', async (req, res) => {
           await enviarFoto(phone, prod.foto, legenda);
         }
 
-        // 3. Pergunta de fechamento apenas após as fotos e se for pedido
+        // 3. Pergunta de fechamento apenas em pedidos confirmados
         if (ehPedidoConfirmado) {
           await enviarMensagem(phone, "Deseja adicionar mais algum item ou finalizar o pedido?");
         }
@@ -82,4 +81,4 @@ app.post('/webhook', async (req, res) => {
 });
 
 const PORT = process.env.PORT || 10000;
-app.listen(PORT, () => console.log(`🟢 George Online - Fluxo Completo com Ambiguidade e Legendas`));
+app.listen(PORT, () => console.log(`🟢 George Online - Fluxo Inteligente Ativo`));
