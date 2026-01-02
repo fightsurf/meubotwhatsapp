@@ -33,33 +33,33 @@ app.post('/webhook', async (req, res) => {
   const textoOriginal = req.body.text?.message;
   if (phone !== NUMERO_AUTORIZADO || !textoOriginal) return;
 
+  // Memória aumentada para 12 mensagens para garantir que ele lembre o que está no "carrinho"
   let historico = memoriaMensagens.get(phone) || [];
   
   try {
     const { texto: respostaIA, produtosDaAPI } = await responderComIA(textoOriginal, historico);
 
-    // Envia a resposta de texto (Preços, Links ou Saudação)
+    // Envia a resposta de texto (Link inicial + Guia/Relatório)
     await enviarMensagem(phone, respostaIA);
 
-    // BUSCA DE FOTOS MELHORADA:
-    // Comparamos o texto da IA com os nomes da API de forma mais flexível
-    const produtosParaEnviar = produtosDaAPI.filter(p => {
-      const nomeLimpo = p.nome.toUpperCase().trim();
-      return respostaIA.toUpperCase().includes(nomeLimpo);
-    });
+    // Dispara fotos se a IA citou produtos (mesmo que seja no relatório)
+    const produtosEncontrados = produtosDaAPI.filter(p => 
+      respostaIA.toUpperCase().includes(p.nome.toUpperCase().trim())
+    );
 
-    if (produtosParaEnviar.length > 0) {
-      for (const prod of produtosParaEnviar) {
-        const legenda = `${prod.nome}\nPreço: R$ ${prod.preco.toFixed(2)}`;
+    if (produtosEncontrados.length > 0) {
+      for (const prod of produtosEncontrados) {
+        const legenda = `${prod.nome}\nPreço Unitário: R$ ${prod.preco.toFixed(2)}`;
         await enviarFoto(phone, prod.foto, legenda);
       }
     }
 
+    // Salva o histórico atualizado
     historico.push({ role: 'user', content: textoOriginal }, { role: 'assistant', content: respostaIA });
-    memoriaMensagens.set(phone, historico.slice(-4));
+    memoriaMensagens.set(phone, historico.slice(-12));
 
   } catch (err) { console.error('❌ Erro Webhook:', err.message); }
 });
 
 const PORT = process.env.PORT || 10000;
-app.listen(PORT, () => console.log(`🟢 George Online - Busca de Fotos Corrigida`));
+app.listen(PORT, () => console.log(`🟢 George Online - Vendedor Completo Ativo`));
