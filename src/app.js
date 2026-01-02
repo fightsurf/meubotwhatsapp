@@ -38,7 +38,7 @@ app.post('/webhook', async (req, res) => {
   try {
     const { texto: respostaIA, produtosDaAPI } = await responderComIA(textoOriginal, historico);
 
-    // Busca produto para enviar foto
+    // Lógica para achar a foto baseada no nome que a IA escreveu
     const produtoMencionado = produtosDaAPI.find(p => 
       respostaIA.toUpperCase().includes(p.nome.toUpperCase())
     );
@@ -50,9 +50,10 @@ app.post('/webhook', async (req, res) => {
     }
 
     historico.push({ role: 'user', content: textoOriginal }, { role: 'assistant', content: respostaIA });
-    memoriaMensagens.set(phone, historico.slice(-4)); // Histórico menor para maior objetividade
+    memoriaMensagens.set(phone, historico.slice(-4));
 
-  } catch (err) { console.error('❌ Erro:', err.message); }
+  } catch (err) { console.error('❌ Erro Webhook:', err.message); }
 });
 
-app.listen(process.env.PORT || 10000);
+const PORT = process.env.PORT || 10000;
+app.listen(PORT, () => console.log(`🟢 George Ativo na porta ${PORT}`));
