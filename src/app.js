@@ -40,19 +40,17 @@ app.post('/webhook', async (req, res) => {
     await enviarMensagem(phone, respostaIA);
 
     const ehConsulta = respostaIA.includes("Veja abaixo as opções que encontrei");
+    const ehBoasVindasPedido = respostaIA.includes("Monte seu pedido aqui");
     const ehDuvidaAdicao = respostaIA.includes("acrescentar ao seu pedido");
     const ehPedidoConfirmado = respostaIA.toUpperCase().includes("RESUMO") || respostaIA.toUpperCase().includes("TOTAL");
 
-    // Lógica corrigida: Se for consulta, filtramos os produtos baseados no que o usuário buscou (textoOriginal)
-    // já que a IA agora não escreve mais os nomes no texto da resposta.
-    if (!ehDuvidaAdicao && (ehConsulta || ehPedidoConfirmado)) {
+    // Não envia fotos se for o link de orçamento, kit feirinha ou dúvida de qual item adicionar
+    if (!ehBoasVindasPedido && !ehDuvidaAdicao && (ehConsulta || ehPedidoConfirmado)) {
       const termoBusca = textoOriginal.toUpperCase();
       
       const produtosEncontrados = produtosDaAPI.filter(p => {
         const nomeProd = p.nome.toUpperCase();
-        // Na consulta, enviamos produtos que contenham as palavras da busca do usuário
         if (ehConsulta) return nomeProd.includes(termoBusca.split(' ').pop()); 
-        // No resumo, continuamos checando o que está no texto da IA
         return respostaIA.toUpperCase().includes(nomeProd);
       });
 
@@ -86,4 +84,4 @@ app.post('/webhook', async (req, res) => {
 });
 
 const PORT = process.env.PORT || 10000;
-app.listen(PORT, () => console.log(`🟢 George Online - Fotos restauradas na consulta`));
+app.listen(PORT, () => console.log(`🟢 George Online - Fluxo de Pedido com Kits Ativado`));
