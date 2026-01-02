@@ -1,42 +1,28 @@
 const OpenAI = require('openai');
-const axios = require('axios'); // Necessário para buscar a API
+const axios = require('axios');
 const PROMPT_BASE = require('./prompt');
 
 const client = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY
 });
 
-const RESPOSTA_PADRAO_FORA_ESCOPO = 'Posso te ajudar com produtos, preços ou o catálogo da Alumínio JR.';
-const LINK_CATALOGO_SITE = 'https://catalogo-aluminio-jr.onrender.com';
 const API_URL = 'https://catalogo-aluminio-jr.onrender.com/api/produtos';
-
-/**
- * Busca os produtos diretamente da API do catálogo
- */
-async function buscarProdutosDaAPI() {
-  try {
-    const response = await axios.get(API_URL);
-    const produtos = response.data;
-
-    // Transforma o JSON da API em uma lista de texto para a IA entender
-    return produtos.map(p => `- ${p.nome}: R$ ${p.preco}`).join('\n');
-  } catch (err) {
-    console.error('❌ Erro ao buscar API de produtos:', err.message);
-    return 'Erro ao carregar preços. Por favor, consulte o catálogo.';
-  }
-}
+const LINK_CATALOGO_SITE = 'https://catalogo-aluminio-jr.onrender.com/';
 
 async function responderComIA(textoCliente, historico = []) {
   try {
-    // 1. Busca os dados atualizados da API antes de responder
-    const catalogoAtualizado = await buscarProdutosDaAPI();
+    // 1. Busca produtos na sua API
+    const responseAPI = await axios.get(API_URL);
+    const produtosRaw = responseAPI.data;
 
-    // 2. Injeta os dados dinâmicos no Prompt
+    // 2. Prepara o catálogo em texto para a IA ler
+    const catalogoTexto = produtosRaw.map(p => `- ${p.nome}: R$ ${p.preco}`).join('\n');
+
     const promptFinal = PROMPT_BASE
-      .replace('{{LINK_CATALOGO}}', LINK_CATALOGO_SITE)
-      .replace('{{CATALOGO_DADOS}}', catalogoAtualizado);
+      .replace(/{{LINK_CATALOGO}}/g, LINK_CATALOGO_SITE)
+      .replace(/{{CATALOGO_DADOS}}/g, catalogoTexto);
 
-    // 3. Chamada para a OpenAI
+    // 3. Chamada OpenAI
     const response = await client.chat.completions.create({
       model: 'gpt-4o-mini',
       messages: [
@@ -44,16 +30,16 @@ async function responderComIA(textoCliente, historico = []) {
         ...historico,
         { role: 'user', content: textoCliente }
       ],
-      temperature: 0,
-      max_tokens: 150
+      temperature: 0
     });
 
-    const resposta = response.choices[0]?.message?.content;
-    return resposta ? resposta.trim() : RESPOSTA_PADRAO_FORA_ESCOPO;
-
+    return {
+      texto: response.choices[0].message.content,
+      produtosDaAPI: produtosRaw // Retorna a lista para o app.js procurar a imagem
+    };
   } catch (err) {
-    console.error('❌ ERRO NO ia.js:', err.message);
-    return RESPOSTA_PADRAO_FORA_ESCOPO;
+    console.error('❌ Erro no ia.js:', err.message);
+    return { texto: "Posso te ajudar com produtos, preços ou o catálogo.", produtosDaAPI: [] };
   }
 }
 
