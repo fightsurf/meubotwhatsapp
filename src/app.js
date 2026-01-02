@@ -38,7 +38,7 @@ app.post('/webhook', async (req, res) => {
   try {
     const { texto: respostaIA, produtosDaAPI } = await responderComIA(textoOriginal, historico);
 
-    // 1. Envia a resposta principal (Saudação, Consulta ou Resumo do Carrinho)
+    // 1. Envia a resposta principal da IA (Sem a pergunta duplicada)
     await enviarMensagem(phone, respostaIA);
 
     const produtosEncontrados = produtosDaAPI.filter(p => 
@@ -52,11 +52,11 @@ app.post('/webhook', async (req, res) => {
         await enviarFoto(phone, prod.foto, legenda);
       }
       
-      // 3. TRAVA DE SEGURANÇA: Só envia a pergunta se for um PEDIDO (contém RESUMO ou TOTAL)
-      // Se for apenas uma consulta de preço, ele não enviará esta mensagem
+      // 3. TRAVA DE FECHAMENTO: Envia a pergunta apenas após as fotos e apenas se for Pedido
       const ehPedido = respostaIA.toUpperCase().includes("RESUMO") || respostaIA.toUpperCase().includes("TOTAL");
       
       if (ehPedido) {
+        // Delay opcional de 1s pode ser útil aqui para garantir a ordem visual no WhatsApp
         await enviarMensagem(phone, "Deseja adicionar mais algum item ou finalizar o pedido?");
       }
     }
@@ -68,4 +68,4 @@ app.post('/webhook', async (req, res) => {
 });
 
 const PORT = process.env.PORT || 10000;
-app.listen(PORT, () => console.log(`🟢 George Online - Fluxo de Pedido com Trava de Consulta`));
+app.listen(PORT, () => console.log(`🟢 George Online - Fluxo Corrigido`));
