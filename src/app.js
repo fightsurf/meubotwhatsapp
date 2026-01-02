@@ -31,13 +31,14 @@ app.post('/webhook', async (req, res) => {
   try {
     const { texto: respostaIA } = await responderComIA(textoOriginal, historico);
 
+    // Envia a resposta exatamente como a IA gerou
     await enviarMensagem(phone, respostaIA);
 
     historico.push({ role: 'user', content: textoOriginal }, { role: 'assistant', content: respostaIA });
-    memoriaMensagens.set(phone, historico.slice(-4)); // Histórico curto para evitar vícios de resposta
+    memoriaMensagens.set(phone, historico.slice(-4));
 
   } catch (err) { console.error('❌ Erro Webhook:', err.message); }
 });
 
 const PORT = process.env.PORT || 10000;
-app.listen(PORT, () => console.log(`🟢 George Online - Versão Estável`));
+app.listen(PORT, () => console.log(`🟢 George Online - Saudação Simplificada`));
