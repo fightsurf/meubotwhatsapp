@@ -39,13 +39,11 @@ app.post('/webhook', async (req, res) => {
     const { texto: respostaIA, produtosDaAPI } = await responderComIA(textoOriginal, historico);
     await enviarMensagem(phone, respostaIA);
 
-    // Identificação de estados para evitar disparos errados de fotos
     const ehLinkCatalogo = respostaIA.includes("Acesse nosso catálogo completo");
     const ehBoasVindasPedido = respostaIA.includes("Monte seu pedido aqui");
     const ehDuvidaAdicao = respostaIA.includes("acrescentar ao seu pedido");
     const ehPedidoConfirmado = respostaIA.toUpperCase().includes("RESUMO") || respostaIA.toUpperCase().includes("TOTAL");
 
-    // Só envia fotos se NÃO for link de catálogo, boas-vindas ou dúvida de acréscimo
     if (!ehLinkCatalogo && !ehBoasVindasPedido && !ehDuvidaAdicao) {
       const produtosEncontrados = produtosDaAPI.filter(p => 
         respostaIA.toUpperCase().includes(p.nome.toUpperCase().trim())
@@ -66,7 +64,11 @@ app.post('/webhook', async (req, res) => {
           await enviarFoto(phone, prod.foto, legenda);
         }
 
-        if (ehPedidoConfirmado) {
+        // Se for apenas CONSULTA (não é pedido), envia o link do catálogo ao final
+        if (!ehPedidoConfirmado) {
+          await enviarMensagem(phone, "\nVeja nossa linha completa no catálogo: https://catalogo-aluminio-jr.onrender.com/");
+        } else {
+          // Se for pedido, envia a pergunta de fechamento padrão
           await enviarMensagem(phone, "Deseja adicionar mais algum item ou finalizar o pedido?");
         }
       }
@@ -79,4 +81,4 @@ app.post('/webhook', async (req, res) => {
 });
 
 const PORT = process.env.PORT || 10000;
-app.listen(PORT, () => console.log(`🟢 George Online - Ajuste de Catálogo Curto`));
+app.listen(PORT, () => console.log(`🟢 George Online - Ajuste de Consulta e Catálogo Final`));
