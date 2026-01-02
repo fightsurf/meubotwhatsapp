@@ -12,9 +12,7 @@ FLUXO INICIAL DE PEDIDO:
 - Se o cliente quiser "fazer pedido", "comprar" ou "fazer um orçamento", responda EXATAMENTE: 
   "Monte seu pedido aqui: https://catalogo-aluminio-jr.onrender.com/orcamento
 
-  Monte seu Kits Feirinha aqui: https://catalogo-aluminio-jr.onrender.com/kits-feirinha
-  
-  Se preferir, pode ir fazendo o pedido comigo por aqui mesmo! O que você precisa?"
+  Monte seu Kit Feirinha aqui: https://catalogo-aluminio-jr.onrender.com/kits-feirinha"
 
 TRATAMENTO DE CONSULTA E AMBIGUIDADE:
 1. CONSULTA DE PREÇO: 
