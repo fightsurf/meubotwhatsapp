@@ -38,23 +38,27 @@ app.post('/webhook', async (req, res) => {
   try {
     const { texto: respostaIA, produtosDaAPI } = await responderComIA(textoOriginal, historico);
 
-    // 1. Envia a resposta principal (Saudação ou Resumo do Carrinho)
+    // 1. Envia a resposta principal (Saudação, Consulta ou Resumo do Carrinho)
     await enviarMensagem(phone, respostaIA);
 
     const produtosEncontrados = produtosDaAPI.filter(p => 
       respostaIA.toUpperCase().includes(p.nome.toUpperCase().trim())
     );
 
-    // 2. Se houver produtos citados, envia as fotos primeiro
+    // 2. Se houver produtos citados, envia as fotos
     if (produtosEncontrados.length > 0) {
       for (const prod of produtosEncontrados) {
         const legenda = `${prod.nome}\nPreço: R$ ${prod.preco.toFixed(2)}`;
         await enviarFoto(phone, prod.foto, legenda);
       }
       
-      // 3. ENVIAR APÓS AS FOTOS: A pergunta de fechamento
-      // Isso garante que ela seja a última mensagem do bloco.
-      await enviarMensagem(phone, "Deseja adicionar mais algum item ou finalizar o pedido?");
+      // 3. TRAVA DE SEGURANÇA: Só envia a pergunta se for um PEDIDO (contém RESUMO ou TOTAL)
+      // Se for apenas uma consulta de preço, ele não enviará esta mensagem
+      const ehPedido = respostaIA.toUpperCase().includes("RESUMO") || respostaIA.toUpperCase().includes("TOTAL");
+      
+      if (ehPedido) {
+        await enviarMensagem(phone, "Deseja adicionar mais algum item ou finalizar o pedido?");
+      }
     }
 
     historico.push({ role: 'user', content: textoOriginal }, { role: 'assistant', content: respostaIA });
@@ -64,4 +68,4 @@ app.post('/webhook', async (req, res) => {
 });
 
 const PORT = process.env.PORT || 10000;
-app.listen(PORT, () => console.log(`🟢 George Online - Fluxo de Pedido Completo`));
+app.listen(PORT, () => console.log(`🟢 George Online - Fluxo de Pedido com Trava de Consulta`));
