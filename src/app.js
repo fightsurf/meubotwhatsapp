@@ -38,21 +38,19 @@ app.post('/webhook', async (req, res) => {
   try {
     const { texto: respostaIA, produtosDaAPI } = await responderComIA(textoOriginal, historico);
 
-    // Identifica se a resposta da IA contém nomes de produtos da API
+    // Envia o texto da IA (seja preço, link de orçamento ou catálogo)
+    await enviarMensagem(phone, respostaIA);
+
+    // Identifica se a resposta cita produtos para enviar as fotos logo abaixo
     const produtosEncontrados = produtosDaAPI.filter(p => 
       respostaIA.toUpperCase().includes(p.nome.toUpperCase())
     );
 
-    // Se a IA citou produtos, envia o texto informativo e as fotos separadas
     if (produtosEncontrados.length > 0) {
-      await enviarMensagem(phone, respostaIA);
       for (const prod of produtosEncontrados) {
         const legendaIndividual = `${prod.nome}\nPreço: R$ ${prod.preco.toFixed(2)}`;
         await enviarFoto(phone, prod.foto, legendaIndividual);
       }
-    } else {
-      // Para pedidos de orçamento, catálogo ou saudações, envia apenas o texto da IA
-      await enviarMensagem(phone, respostaIA);
     }
 
     historico.push({ role: 'user', content: textoOriginal }, { role: 'assistant', content: respostaIA });
@@ -62,4 +60,4 @@ app.post('/webhook', async (req, res) => {
 });
 
 const PORT = process.env.PORT || 10000;
-app.listen(PORT, () => console.log(`🟢 George Online - Regra de Orçamento Ativa`));
+app.listen(PORT, () => console.log(`🟢 George Online - Correção de Preços e Orçamento`));
