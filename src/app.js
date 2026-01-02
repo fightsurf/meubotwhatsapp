@@ -41,13 +41,13 @@ app.post('/webhook', async (req, res) => {
     // 1. Envia a resposta da IA
     await enviarMensagem(phone, respostaIA);
 
-    // Identifica se é uma dúvida de AMBIGUIDADE para ADICIONAR ao pedido
-    const ehDuvidaPedido = respostaIA.includes("Qual delas você gostaria de acrescentar");
+    // Identificação de estados
+    const ehBoasVindas = respostaIA.includes("Monte seu pedido aqui");
+    const ehDuvidaAmbiguidade = respostaIA.includes("Qual delas você gostaria de acrescentar");
     const ehPedidoConfirmado = respostaIA.toUpperCase().includes("RESUMO") || respostaIA.toUpperCase().includes("TOTAL");
 
-    // 2. Só trava o envio de fotos se for dúvida de ADIÇÃO ao pedido. 
-    // Se for consulta (ehDuvidaPedido = false), ele envia as fotos normalmente.
-    if (!ehDuvidaPedido) {
+    // 2. Só envia mídias e perguntas extras se NÃO for Boas Vindas ou Dúvida de acréscimo
+    if (!ehBoasVindas && !ehDuvidaAmbiguidade) {
       const produtosEncontrados = produtosDaAPI.filter(p => 
         respostaIA.toUpperCase().includes(p.nome.toUpperCase().trim())
       );
@@ -60,14 +60,13 @@ app.post('/webhook', async (req, res) => {
             const linhas = respostaIA.split('\n');
             const linhaDoProduto = linhas.find(l => l.toUpperCase().includes(prod.nome.toUpperCase().trim()));
             if (linhaDoProduto) {
-              const calculoDetalhado = linhaDoProduto.split(': ')[1];
-              if (calculoDetalhado) legenda = `${prod.nome}\n${calculoDetalhado}`;
+              const detalhes = linhaDoProduto.split(': ')[1];
+              if (detalhes) legenda = `${prod.nome}\n${detalhes}`;
             }
           }
           await enviarFoto(phone, prod.foto, legenda);
         }
 
-        // 3. Pergunta de fechamento apenas em pedidos confirmados
         if (ehPedidoConfirmado) {
           await enviarMensagem(phone, "Deseja adicionar mais algum item ou finalizar o pedido?");
         }
@@ -81,4 +80,4 @@ app.post('/webhook', async (req, res) => {
 });
 
 const PORT = process.env.PORT || 10000;
-app.listen(PORT, () => console.log(`🟢 George Online - Fluxo Inteligente Ativo`));
+app.listen(PORT, () => console.log(`🟢 George Online - Fluxo Corrigido`));
