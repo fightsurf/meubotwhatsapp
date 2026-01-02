@@ -44,7 +44,6 @@ app.post('/webhook', async (req, res) => {
     const ehDuvidaAdicao = respostaIA.includes("acrescentar ao seu pedido");
     const ehPedidoConfirmado = respostaIA.toUpperCase().includes("RESUMO") || respostaIA.toUpperCase().includes("TOTAL");
 
-    // Lógica de mídias: ignorar se for boas-vindas ao pedido ou dúvida de acréscimo
     if (!ehBoasVindasPedido && !ehDuvidaAdicao && (ehConsulta || ehPedidoConfirmado)) {
       const termoBusca = textoOriginal.toUpperCase();
       
@@ -84,4 +83,4 @@ app.post('/webhook', async (req, res) => {
 });
 
 const PORT = process.env.PORT || 10000;
-app.listen(PORT, () => console.log(`🟢 George Online - Fluxo Kit Feirinha Ajustado`));
+app.listen(PORT, () => console.log(`🟢 George Online - Fluxo de Pedido Simplificado`));
