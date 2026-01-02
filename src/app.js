@@ -15,7 +15,14 @@ async function enviarMensagem(phone, message) {
   try {
     await axios.post(`https://api.z-api.io/instances/${INSTANCE_ID}/token/${TOKEN_INSTANCIA}/send-text`, 
       { phone, message }, { headers: { 'Client-Token': CLIENT_TOKEN } });
-  } catch (err) { console.error('❌ Erro:', err.message); }
+  } catch (err) { console.error('❌ Erro Texto:', err.message); }
+}
+
+async function enviarFoto(phone, image, caption) {
+  try {
+    await axios.post(`https://api.z-api.io/instances/${INSTANCE_ID}/token/${TOKEN_INSTANCIA}/send-image`, 
+      { phone, image, caption }, { headers: { 'Client-Token': CLIENT_TOKEN } });
+  } catch (err) { console.error('❌ Erro Imagem:', err.message); }
 }
 
 app.post('/webhook', async (req, res) => {
@@ -29,16 +36,27 @@ app.post('/webhook', async (req, res) => {
   let historico = memoriaMensagens.get(phone) || [];
   
   try {
-    const { texto: respostaIA } = await responderComIA(textoOriginal, historico);
+    const { texto: respostaIA, produtosDaAPI } = await responderComIA(textoOriginal, historico);
 
-    // Envia a resposta exatamente como a IA gerou
     await enviarMensagem(phone, respostaIA);
 
+    // Busca e envia fotos apenas se a IA citou produtos específicos no texto
+    const produtosEncontrados = produtosDaAPI.filter(p => 
+      respostaIA.toUpperCase().includes(p.nome.toUpperCase().trim())
+    );
+
+    if (produtosEncontrados.length > 0) {
+      for (const prod of produtosEncontrados) {
+        const legenda = `${prod.nome}\nPreço: R$ ${prod.preco.toFixed(2)}`;
+        await enviarFoto(phone, prod.foto, legenda);
+      }
+    }
+
     historico.push({ role: 'user', content: textoOriginal }, { role: 'assistant', content: respostaIA });
-    memoriaMensagens.set(phone, historico.slice(-4));
+    memoriaMensagens.set(phone, historico.slice(-6));
 
   } catch (err) { console.error('❌ Erro Webhook:', err.message); }
 });
 
 const PORT = process.env.PORT || 10000;
-app.listen(PORT, () => console.log(`🟢 George Online - Saudação Simplificada`));
+app.listen(PORT, () => console.log(`🟢 George Online - Saudação e Catálogo Alinhados`));
