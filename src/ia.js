@@ -11,7 +11,6 @@ async function responderComIA(textoCliente, historico = []) {
     const responseAPI = await axios.get(API_URL);
     const produtosRaw = responseAPI.data;
 
-    // Formatação clara para facilitar a busca da IA
     const catalogoTexto = produtosRaw
       .map(p => `PRODUTO: ${p.nome} | PREÇO: R$ ${p.preco.toFixed(2)}`)
       .join('\n');
