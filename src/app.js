@@ -15,7 +15,7 @@ async function enviarMensagem(phone, message) {
   try {
     await axios.post(`https://api.z-api.io/instances/${INSTANCE_ID}/token/${TOKEN_INSTANCIA}/send-text`, 
       { phone, message }, { headers: { 'Client-Token': CLIENT_TOKEN } });
-  } catch (err) { console.error('❌ Erro Texto:', err.message); }
+  } catch (err) { console.error('❌ Erro:', err.message); }
 }
 
 app.post('/webhook', async (req, res) => {
@@ -29,21 +29,15 @@ app.post('/webhook', async (req, res) => {
   let historico = memoriaMensagens.get(phone) || [];
   
   try {
-    let { texto: respostaIA, produtosDaAPI } = await responderComIA(textoOriginal, historico);
+    const { texto: respostaIA } = await responderComIA(textoOriginal, historico);
 
-    // SOLUÇÃO DEFINITIVA: Se for saudação, quebra em duas mensagens separadas
-    if (respostaIA.includes("Você está falando com a Alumínio JR.")) {
-      await enviarMensagem(phone, "Você está falando com a Alumínio JR. Em que posso ajudar?");
-      await enviarMensagem(phone, "Monte seu pedido aqui: https://catalogo-aluminio-jr.onrender.com/orcamento");
-    } else {
-      await enviarMensagem(phone, respostaIA);
-    }
+    await enviarMensagem(phone, respostaIA);
 
     historico.push({ role: 'user', content: textoOriginal }, { role: 'assistant', content: respostaIA });
-    memoriaMensagens.set(phone, historico.slice(-10));
+    memoriaMensagens.set(phone, historico.slice(-4)); // Histórico curto para evitar vícios de resposta
 
   } catch (err) { console.error('❌ Erro Webhook:', err.message); }
 });
 
 const PORT = process.env.PORT || 10000;
-app.listen(PORT, () => console.log(`🟢 George Online - Mensagens Separadas`));
+app.listen(PORT, () => console.log(`🟢 George Online - Versão Estável`));
