@@ -29,7 +29,6 @@ app.post('/webhook', async (req, res) => {
   res.sendStatus(200);
   if (req.body.fromMe || req.body.isGroup) return;
 
-  // CORREÇÃO: Pegamos o valor do corpo da requisição e limpamos em uma única linha
   const phone = req.body.phone.replace(/\D/g, ''); 
   const textoOriginal = req.body.text?.message;
   if (phone !== NUMERO_AUTORIZADO || !textoOriginal) return;
@@ -46,12 +45,14 @@ app.post('/webhook', async (req, res) => {
     const ehPedidoConfirmado = respostaIA.toUpperCase().includes("RESUMO") || respostaIA.toUpperCase().includes("TOTAL");
 
     if (!ehLinkCatalogo && !ehBoasVindasPedido && !ehDuvidaAdicao) {
+      // Filtramos os produtos que a IA mencionou internamente para enviar as mídias
       const produtosEncontrados = produtosDaAPI.filter(p => 
         respostaIA.toUpperCase().includes(p.nome.toUpperCase().trim())
       );
 
       if (produtosEncontrados.length > 0) {
         for (const prod of produtosEncontrados) {
+          // Legenda contém Nome e Preço (ou cálculo se for pedido)
           let legenda = `${prod.nome}\nPreço: R$ ${prod.preco.toFixed(2)}`;
 
           if (ehPedidoConfirmado) {
@@ -66,10 +67,10 @@ app.post('/webhook', async (req, res) => {
         }
 
         if (!ehPedidoConfirmado) {
-          // Pula uma linha e manda o link do catálogo após consultas de preço
+          // Após as fotos da consulta, envia apenas o link do catálogo
           await enviarMensagem(phone, "\nVeja nossa linha completa no catálogo: https://catalogo-aluminio-jr.onrender.com/");
         } else {
-          // Pergunta de fechamento após resumos de pedido
+          // Após o resumo do pedido, pergunta se deseja finalizar
           await enviarMensagem(phone, "Deseja adicionar mais algum item ou finalizar o pedido?");
         }
       }
@@ -82,4 +83,4 @@ app.post('/webhook', async (req, res) => {
 });
 
 const PORT = process.env.PORT || 10000;
-app.listen(PORT, () => console.log(`🟢 George Online - Erro de Inicialização Corrigido`));
+app.listen(PORT, () => console.log(`🟢 George Online - Consulta Simplificada (Sem Redundância)`));
